@@ -94,6 +94,7 @@ export default class ErudaIndexedDB {
                 <div class="eruda-btn eruda-filter">
                     <span class="eruda-icon eruda-icon-filter"></span>
                 </div>
+                <input class="eruda-filter-input" type="text" placeholder="Filter" style="display:none;width:80px;margin-left:4px;border:1px solid #ccc;padding:2px 4px;font-size:12px;vertical-align:middle;">
                 <div class="eruda-btn eruda-filter-text" style="display:none"></div>
             </h2>
             <div class="eruda-data-grid"></div>
@@ -114,14 +115,19 @@ export default class ErudaIndexedDB {
                 }
                 deleteDB(this.selectedItem.database).then(() => this.refresh());
             } else if (target.closest('.eruda-filter')) {
-                this.devTools?.notify('Filter', {
-                    input: true,
-                    onConfirm: (val: string) => {
-                        this.filterText = val || '';
+                const input = this.container?.querySelector('.eruda-filter-input') as HTMLInputElement | null;
+                if (input) {
+                    if (input.style.display === 'none') {
+                        input.style.display = 'inline-block';
+                        input.focus();
+                    } else {
+                        input.style.display = 'none';
+                        input.value = '';
+                        this.filterText = '';
                         this.updateFilterText();
                         this.refresh();
-                    },
-                });
+                    }
+                }
             } else if (target.closest('.eruda-show-detail')) {
                 if (!this.selectedItem) return;
                 const { database, store } = this.selectedItem;
@@ -134,6 +140,25 @@ export default class ErudaIndexedDB {
                 });
             }
         });
+
+        const input = this.container?.querySelector('.eruda-filter-input') as HTMLInputElement | null;
+        if (input) {
+            input.addEventListener('input', () => {
+                this.filterText = input.value;
+                this.refresh();
+            });
+            input.addEventListener('blur', () => {
+                if (!input.value) {
+                    input.style.display = 'none';
+                }
+                this.updateFilterText();
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            });
+        }
 
         this.dataGrid
             ?.on('select', (node: any) => {
