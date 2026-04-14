@@ -180,7 +180,10 @@
                 let result = null;
                 let error = null;
                 try {
-                    const raw = eval(data.code);
+                    let raw = eval(data.code);
+                    if (raw && typeof raw === 'object' && typeof raw.then === 'function') {
+                        raw = await raw;
+                    }
                     if (raw === undefined) {
                         result = undefined;
                     } else if (raw === null) {
