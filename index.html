@@ -190,6 +190,7 @@
         import mountIndexedDB from './src/lib/eruda-indexeddb/src/index.ts';
 
         // ===== HMR Eval Bridge =====
+        import { normalizeResult, classifyError } from './src/lib/eval-engine.ts';
         if (import.meta.hot) {
             import.meta.hot.on('api-eval-request', async (data) => {
                 let success = false;
@@ -201,23 +202,12 @@
                     if (raw && typeof raw === 'object' && typeof raw.then === 'function') {
                         raw = await raw;
                     }
-                    if (raw === undefined) {
-                        result = undefined;
-                    } else if (raw === null) {
-                        result = null;
-                    } else if (typeof raw === 'object') {
-                        try {
-                            result = JSON.parse(JSON.stringify(raw));
-                        } catch {
-                            result = String(raw);
-                        }
-                    } else {
-                        result = raw;
-                    }
+                    result = normalizeResult(raw);
                     success = true;
                 } catch (e) {
-                    error = e instanceof Error ? e.stack || e.message : String(e);
-                    errorType = e instanceof SyntaxError ? 'syntax' : 'runtime';
+                    const classified = classifyError(e);
+                    error = classified.error;
+                    errorType = classified.errorType;
                     success = false;
                 }
                 import.meta.hot.send('api-eval-response', {

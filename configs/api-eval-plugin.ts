@@ -5,11 +5,10 @@
 import type { ViteDevServer } from "vite"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import vm from "node:vm"
+import { normalizeResult, classifyError, type EvalResult } from "../src/lib/eval-engine.ts"
 
 const pendingRequests = new Map<number, { resolve: (v: unknown) => void }>()
 let requestId = 0
-
-type EvalResult = { success: boolean; errorType: string; result: unknown; error: string | null }
 
 // 共享的 Node.js 执行上下文（持久化状态）
 const eval2Context = vm.createContext({
@@ -27,7 +26,9 @@ const eval2Context = vm.createContext({
 	clearTimeout,
 	clearInterval,
 	fetch,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setImmediate: (globalThis as any).setImmediate,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	clearImmediate: (globalThis as any).clearImmediate,
 })
 
@@ -64,7 +65,7 @@ function sendResult(res: ServerResponse, id: number, result: EvalResult, isPrett
 		res.setHeader("Content-Type", "text/plain; charset=utf-8")
 		const prettyResult = result.error
 			? `❌ errorType: ${result.errorType}\n\n${result.error}`
-			: `✅ success: true\nresult: ${typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : result.result}`
+			: `✅ success: true\nresult: ${typeof result.result === "object" ? JSON.stringify(result.result, null, 2) : result.result}`
 		res.end(`[Request #${id}]\n${prettyResult}\n`)
 	} else {
 		res.setHeader("Content-Type", "application/json; charset=utf-8")
@@ -75,17 +76,17 @@ function sendResult(res: ServerResponse, id: number, result: EvalResult, isPrett
 async function evalInServer(code: string): Promise<EvalResult> {
 	try {
 		const wrapped = `(async () => { return await (eval(${JSON.stringify(code)})); })()`
-		let result = vm.runInContext(wrapped, eval2Context, { timeout: 5000 })
-		if (result && typeof (result as any).then === "function") {
-			result = await Promise.race([
-				result as Promise<unknown>,
+		let raw = vm.runInContext(wrapped, eval2Context, { timeout: 5000 })
+		if (raw && typeof (raw as { then?: unknown }).then === "function") {
+			raw = await Promise.race([
+				raw as Promise<unknown>,
 				new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
 			])
 		}
-		return { success: true, errorType: "", result, error: null }
-	} catch (err: any) {
-		const errorType = err instanceof SyntaxError ? "syntax" : err?.message === "timeout" ? "timeout" : "runtime"
-		return { success: false, errorType, result: null, error: err instanceof Error ? err.stack || err.message : String(err) }
+		return { success: true, errorType: null, result: normalizeResult(raw), error: null }
+	} catch (err: unknown) {
+		const { error, errorType } = classifyError(err)
+		return { success: false, errorType, result: null, error }
 	}
 }
 
