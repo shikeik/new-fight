@@ -119,6 +119,22 @@
     </div>
 
     <script type="module">
+        // ===== 控制台测试日志 =====
+        console.log('[TEST] eruda + vConsole 同时加载测试');
+        console.info('[TEST] 这是一条 info 日志');
+        console.warn('[TEST] 这是一条 warn 日志，用于测试样式区分');
+        console.error('[TEST] 这是一条 error 日志');
+        console.table([
+            { name: 'Brawler', hp: 100, atk: 15 },
+            { name: 'Boxer', hp: 120, atk: 20 },
+            { name: 'Blitzer', hp: 90, atk: 25 }
+        ]);
+        console.time('initTimer');
+        console.timeEnd('initTimer');
+        setInterval(() => {
+            console.log(`[HEARTBEAT] ${new Date().toLocaleTimeString()} — 游戏运行中...`);
+        }, 5000);
+
         import * as THREE from 'three/webgpu';
 
         // 引擎常量
