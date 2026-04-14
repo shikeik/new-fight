@@ -1,4 +1,5 @@
 import { resolve } from "path"
+import { apiEvalPlugin } from "./api-eval-plugin.ts"
 
 // 项目根目录（vite.config.ts 现在在 configs/ 目录下）
 const rootDir = resolve(__dirname, "..")
@@ -18,7 +19,7 @@ export default {
 			}
 		}
 	},
-	plugins: [],
+	plugins: [apiEvalPlugin],
 	resolve: {
 		alias: {
 			"@": resolve(rootDir, "src"),

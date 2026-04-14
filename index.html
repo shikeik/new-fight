@@ -59,6 +59,57 @@
         @keyframes stamp { to { transform: scale(1); } }
     </style>
 
+    <script>
+        // ===== 浏览器日志中继 =====
+        (function() {
+            const logQueue = [];
+            const sendLogs = () => {
+                if (!logQueue.length) return;
+                const batch = logQueue.splice(0, logQueue.length);
+                fetch('http://' + location.host + '/api/logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ logs: batch }),
+                    mode: 'no-cors'
+                }).catch(() => {});
+            };
+            setInterval(sendLogs, 300);
+
+            const serialize = (args) => args.map(a => {
+                if (typeof a === 'object') try { return JSON.stringify(a); } catch { return String(a); }
+                return String(a);
+            }).join(' ');
+
+            const hook = (level, orig) => function(...args) {
+                orig.apply(this, args);
+                logQueue.push({ time: new Date().toLocaleTimeString(), level, message: serialize(args) });
+            };
+
+            console.log   = hook('log',   console.log);
+            console.info  = hook('info',  console.info);
+            console.warn  = hook('warn',  console.warn);
+            console.error = hook('error', console.error);
+
+            // table 特殊处理
+            const origTable = console.table;
+            console.table = function(data, columns) {
+                origTable.apply(this, arguments);
+                try {
+                    logQueue.push({ time: new Date().toLocaleTimeString(), level: 'table', message: JSON.stringify({ data, columns }) });
+                } catch {}
+            };
+
+            // 未捕获异常
+            window.onerror = (msg, url, line, col, err) => {
+                const text = err && err.stack ? err.stack : `${msg} at ${url}:${line}:${col}`;
+                logQueue.push({ time: new Date().toLocaleTimeString(), level: 'error', message: '[UNCAUGHT] ' + text });
+            };
+            window.onunhandledrejection = (e) => {
+                const reason = e.reason && e.reason.stack ? e.reason.stack : String(e.reason);
+                logQueue.push({ time: new Date().toLocaleTimeString(), level: 'error', message: '[UNHANDLED REJECTION] ' + reason });
+            };
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
 </head>
@@ -119,23 +170,45 @@
     </div>
 
     <script type="module">
-        // ===== 控制台测试日志 =====
-        console.log('[TEST] eruda + vConsole 同时加载测试');
-        console.info('[TEST] 这是一条 info 日志');
-        console.warn('[TEST] 这是一条 warn 日志，用于测试样式区分');
-        console.error('[TEST] 这是一条 error 日志');
-        console.table([
-            { name: 'Brawler', hp: 100, atk: 15 },
-            { name: 'Boxer', hp: 120, atk: 20 },
-            { name: 'Blitzer', hp: 90, atk: 25 }
-        ]);
-        console.time('initTimer');
-        console.timeEnd('initTimer');
-        setInterval(() => {
-            console.log(`[HEARTBEAT] ${new Date().toLocaleTimeString()} — 游戏运行中...`);
-        }, 5000);
-
         import * as THREE from 'three/webgpu';
+
+        // ===== HMR Eval Bridge =====
+        if (import.meta.hot) {
+            import.meta.hot.on('api-eval-request', async (data) => {
+                let success = false;
+                let errorType = null;
+                let result = null;
+                let error = null;
+                try {
+                    const raw = eval(data.code);
+                    if (raw === undefined) {
+                        result = undefined;
+                    } else if (raw === null) {
+                        result = null;
+                    } else if (typeof raw === 'object') {
+                        try {
+                            result = JSON.parse(JSON.stringify(raw));
+                        } catch {
+                            result = String(raw);
+                        }
+                    } else {
+                        result = raw;
+                    }
+                    success = true;
+                } catch (e) {
+                    error = e instanceof Error ? e.stack || e.message : String(e);
+                    errorType = e instanceof SyntaxError ? 'syntax' : 'runtime';
+                    success = false;
+                }
+                import.meta.hot.send('api-eval-response', {
+                    id: data.id,
+                    success,
+                    errorType,
+                    result,
+                    error
+                });
+            });
+        }
 
         // 引擎常量
         const CFG = { g: -60, floorY: 0, dodgeSpeed: 30 };

@@ -31,6 +31,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "eruda": "^3.4.3",
+    "eruda-indexeddb": "^0.1.1",
     "rollup": "^4.60.1",
     "three": "^0.171.0"
   }
