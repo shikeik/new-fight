@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "AI 神经元训练沙盘 - 极简跳跃游戏",
   "type": "module",
+  "bin": {
+    "eval-api": "scripts/eval-api.mjs"
+  },
   "scripts": {
     "dev": "vite --config configs/vite.config.ts",
     "prebuild": "npm run type-check && npm run lint",
