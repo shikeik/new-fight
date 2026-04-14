@@ -778,16 +778,20 @@
             }
 
             if(p1 && p2 && appState === 'PLAY') {
-                let midX = (p1.pos.x + p2.pos.x) / 2; let dist = Math.abs(p1.pos.x - p2.pos.x);
+                let midX = (p1.pos.x + p2.pos.x) / 2; let midY = (p1.pos.y + p2.pos.y) / 2;
+                let dist = Math.abs(p1.pos.x - p2.pos.x);
                 const aspect = camera.aspect;
-                const bodyWidth = 1.4;
-                const requiredZ = (dist + bodyWidth) / (2 * Math.tan(camera.fov * Math.PI / 360) * aspect * CFG.cameraSafeRatio);
-                let targetZ = Math.max(12, requiredZ);
-                let targetY = 3.5 + dist * 0.12;
+                const bodyWidth = 1.4; const bodyHeight = 1.8;
+                const tanHalfFov = Math.tan(camera.fov * Math.PI / 360);
+                const requiredZX = (dist + bodyWidth) / (2 * tanHalfFov * aspect * CFG.cameraSafeRatio);
+                const dy = Math.abs(p1.pos.y - p2.pos.y) + bodyHeight;
+                const requiredZY = dy / (2 * tanHalfFov * CFG.cameraSafeRatio);
+                let targetZ = Math.max(12, Math.max(requiredZX, requiredZY));
+                let targetY = midY + 3.5 + dist * 0.12;
                 camera.position.x = THREE.MathUtils.lerp(camera.position.x, midX, CFG.cameraLerpX);
                 camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, CFG.cameraLerpZ);
                 if(window.gameCamShake > 0) { camera.position.x += (Math.random()-0.5)*window.gameCamShake*2; camera.position.y = targetY + (Math.random()-0.5)*window.gameCamShake*2; window.gameCamShake -= dt; } else camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, CFG.cameraLerpY);
-                camera.lookAt(midX, 2.0, 0); 
+                camera.lookAt(midX, midY + 2.0, 0); 
             } else { camera.position.x = Math.sin(time*0.0005)*8; camera.lookAt(0, 3, 0); }
             renderer.render(scene, camera);
         }
