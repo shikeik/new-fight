@@ -177,6 +177,7 @@
 
     <script type="module">
         import * as THREE from 'three/webgpu';
+        import mountIndexedDB from './src/lib/eruda-indexeddb/src/index.ts';
 
         // ===== HMR Eval Bridge =====
         if (import.meta.hot) {
@@ -217,6 +218,11 @@
                     error
                 });
             });
+        }
+
+        // ===== Inject IndexedDB into eruda Resources =====
+        if (typeof eruda !== 'undefined' && eruda.get) {
+            mountIndexedDB(eruda);
         }
 
         // 引擎常量
