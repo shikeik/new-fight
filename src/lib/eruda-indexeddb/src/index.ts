@@ -1,7 +1,7 @@
 import ErudaIndexedDB from './ErudaIndexedDB';
 import type { DevTools } from 'eruda';
 
-const MOUNTED_CLASS = 'eruda-indexeddb-injected';
+const MOUNTED_CLASS = 'eruda-indexeddb';
 
 function getResourcesPanel(): HTMLElement | null {
     const erudaEl = document.getElementById('eruda');
@@ -24,6 +24,7 @@ export function mountIndexedDB(erudaObj: typeof import('eruda')): { destroy: () 
         // Create wrapper
         wrapper = document.createElement('div');
         wrapper.className = 'eruda-section ' + MOUNTED_CLASS;
+        wrapper.style.border = 'none';
         // Insert at the top of .eruda-resources
         resources.insertBefore(wrapper, resources.firstElementChild);
 

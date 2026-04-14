@@ -1,6 +1,5 @@
 import LunaDataGrid from 'luna-data-grid';
 import { deleteDB, openDB } from 'idb';
-import { classPrefix as c } from './utils';
 import type { DevTools } from 'eruda';
 
 export interface IndexedDBItem {
@@ -64,20 +63,21 @@ export default class ErudaIndexedDB {
     }
 
     private initTemplate(el: HTMLElement): void {
-        el.innerHTML = c(`<div class="actions" style="display:flex;gap:4px;margin:10px">
-              <h2>IndexedDB</h2>
-              <span style="flex:1"></span>
-              <div class="btn refresh-databases">
-                <span class="icon icon-refresh"></span>
-              </div>
-              <div class="btn show-detail btn-disabled">
-                <span class="icon icon-eye"></span>
-              </div>
-              <div class="btn clear-database">
-                <span class="icon icon-clear"></span>
-              </div>
-            </div>
-            <div class="data-grid" style="margin:10px"></div>`);
+        el.innerHTML = `
+            <h2 class="eruda-title">
+                IndexedDB
+                <div class="eruda-btn eruda-refresh-databases">
+                    <span class="eruda-icon eruda-icon-refresh"></span>
+                </div>
+                <div class="eruda-btn eruda-show-detail eruda-btn-disabled">
+                    <span class="eruda-icon eruda-icon-eye"></span>
+                </div>
+                <div class="eruda-btn eruda-clear-database">
+                    <span class="eruda-icon eruda-icon-clear"></span>
+                </div>
+            </h2>
+            <div class="eruda-data-grid"></div>
+        `;
     }
 
     private bindEvents() {
@@ -139,11 +139,10 @@ export default class ErudaIndexedDB {
     private updateButtons() {
         const btn = this.container?.querySelector('.eruda-show-detail') as HTMLElement | null;
         if (!btn) return;
-        const disabled = 'eruda-btn-disabled';
         if (this.selectedItem) {
-            btn.classList.remove(disabled);
+            btn.classList.remove('eruda-btn-disabled');
         } else {
-            btn.classList.add(disabled);
+            btn.classList.add('eruda-btn-disabled');
         }
     }
 
