@@ -60,6 +60,24 @@
     </style>
 
     <script>
+        // ===== modTick 基础 API =====
+        window.modTick = {
+            add(id, fn) {
+                window.__TICK_TASKS__ = window.__TICK_TASKS__ || [];
+                window.__TICK_TASKS__.push({ id, fn });
+                return id;
+            },
+            remove(id) {
+                window.__TICK_TASKS__ = (window.__TICK_TASKS__ || []).filter(t => t.id !== id);
+            },
+            clear() {
+                window.__TICK_TASKS__ = [];
+            },
+            list() {
+                return (window.__TICK_TASKS__ || []).map(t => t.id);
+            }
+        };
+
         // ===== 浏览器日志捕获 =====
         window.__ALL_LOGS__ = [];
         (function() {
@@ -749,14 +767,13 @@
             }
             vfx.update(dt);
 
-            if (Array.isArray(window.__TICK_TASKS__)) {
-                for (let i = window.__TICK_TASKS__.length - 1; i >= 0; i--) {
-                    try {
-                        window.__TICK_TASKS__[i].fn(dt);
-                    } catch (e) {
-                        console.error('[TICK]', e);
-                        window.__TICK_TASKS__.splice(i, 1);
-                    }
+            window.__TICK_TASKS__ = window.__TICK_TASKS__ || [];
+            for (let i = window.__TICK_TASKS__.length - 1; i >= 0; i--) {
+                try {
+                    window.__TICK_TASKS__[i].fn(dt);
+                } catch (e) {
+                    console.error('[TICK]', e);
+                    window.__TICK_TASKS__.splice(i, 1);
                 }
             }
 
