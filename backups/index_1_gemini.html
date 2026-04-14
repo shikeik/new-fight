@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebGPU 3D Fighter MVP</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; touch-action: none; font-family: sans-serif; user-select: none; }
+        #game-canvas { display: block; width: 100vw; height: 100vh; }
+        
+        /* UI 层 */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* 顶部状态栏 */
+        .hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
+        .hp-bar-bg { width: 40vw; height: 20px; background: rgba(255,255,255,0.2); border: 2px solid #fff; transform: skewX(-15deg); }
+        .hp-bar-fill { height: 100%; transition: width 0.1s linear; }
+        #player-hp { background: #00ff88; width: 100%; transform-origin: left; }
+        #enemy-hp { background: #ff3366; width: 100%; transform-origin: right; float: right; }
+        
+        /* 虚拟控制器 (开启 pointer-events 以接收触摸) */
+        .controls { pointer-events: auto; }
+        
+        /* 左侧摇杆 */
+        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        #joystick-knob { width: 60px; height: 60px; background: rgba(255,255,255,0.5); border-radius: 50%; transition: transform 0.05s; }
+        
+        /* 右侧按钮区 */
+        #action-buttons { position: absolute; bottom: 30px; right: 30px; width: 200px; height: 200px; }
+        .btn { position: absolute; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .btn:active { background: rgba(255,255,255,0.6); }
+        #btn-attack { bottom: 0; left: 0; width: 70px; height: 70px; background: rgba(255,50,50,0.4); }
+        #btn-jump { top: 0; right: 0; width: 60px; height: 60px; }
+        #btn-dodge { bottom: 0; right: 0; width: 60px; height: 60px; background: rgba(50,200,255,0.4); }
+        #btn-skill { top: 0; left: 0; width: 60px; height: 60px; background: rgba(255,200,50,0.4); }
+
+        /* 全屏与提示 */
+        #btn-fullscreen { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); padding: 5px 15px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; border-radius: 15px; pointer-events: auto; }
+        #msg-overlay { position: absolute; top: 40%; width: 100%; text-align: center; color: #fff; font-size: 3rem; font-weight: 900; text-shadow: 2px 2px 0 #000; opacity: 0; transition: opacity 0.3s; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="hp-bar-bg"><div id="player-hp" class="hp-bar-fill"></div></div>
+            <div class="hp-bar-bg"><div id="enemy-hp" class="hp-bar-fill"></div></div>
+        </div>
+        <button id="btn-fullscreen" class="controls">进入全屏</button>
+        <div id="msg-overlay">K.O.</div>
+
+        <div id="joystick-zone" class="controls"><div id="joystick-knob"></div></div>
+        <div id="action-buttons" class="controls">
+            <div id="btn-attack" class="btn">拳击</div>
+            <div id="btn-jump" class="btn">跳跃</div>
+            <div id="btn-dodge" class="btn">闪避</div>
+            <div id="btn-skill" class="btn">波动</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import WebGPURenderer from 'three/addons/renderers/webgpu/WebGPURenderer.js';
+
+        // --- 1. 核心系统初始化 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4, 12);
+
+        // WebGPU 渲染器
+        const renderer = new WebGPURenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        // 灯光
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0x404060, 1.5));
+
+        // 程序化地板 (网格线风格)
+        const floorGeo = new THREE.PlaneGeometry(100, 40);
+        const floorMat = new THREE.MeshStandardMaterial({ 
+            color: 0x111122, roughness: 0.8, metalness: 0.2 
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const gridHelper = new THREE.GridHelper(100, 50, 0x00ff88, 0x444466);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        // --- 2. 游戏状态与时间系统 ---
+        let gameActive = true;
+        let globalTime = 0;
+        let hitStopTimer = 0; // 顿帧计时器
+        let cameraShake = 0;
+        
+        // --- 3. 角色类 (程序化层级动画) ---
+        class Fighter {
+            constructor(color, isPlayer = false, startX = 0) {
+                this.isPlayer = isPlayer;
+                this.hp = 100;
+                this.group = new THREE.Group();
+                this.group.position.set(startX, 0, 0);
+                scene.add(this.group);
+
+                // 物理状态
+                this.x = startX;
+                this.y = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.facing = isPlayer ? 1 : -1;
+                this.state = 'IDLE'; // IDLE, RUN, JUMP, ATTACK, DODGE, SKILL, HIT
+                this.stateTime = 0;
+                
+                // 战斗属性
+                this.isInvincible = false;
+
+                // 创建程序化几何体组件
+                const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 });
+                const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+
+                // 根节点/躯干
+                this.torso = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.8), bodyMat);
+                this.torso.position.y = 1.8;
+                this.torso.castShadow = true;
+                this.group.add(this.torso);
+
+                // 头部
+                this.head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), headMat);
+                this.head.position.y = 1.1;
+                this.torso.add(this.head);
+
+                // 关节辅助函数
+                const createLimb = (w, h, d, px, py, pz) => {
+                    const pivot = new THREE.Group();
+                    pivot.position.set(px, py, pz);
+                    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bodyMat);
+                    mesh.position.y = -h / 2; // 枢纽在顶部
+                    mesh.castShadow = true;
+                    pivot.add(mesh);
+                    return pivot;
+                };
+
+                this.armR = createLimb(0.3, 1.2, 0.3, -0.6, 0.6, 0);
+                this.armL = createLimb(0.3, 1.2, 0.3, 0.6, 0.6, 0);
+                this.torso.add(this.armR);
+                this.torso.add(this.armL);
+
+                this.legR = createLimb(0.4, 1.2, 0.4, -0.25, -0.75, 0);
+                this.legL = createLimb(0.4, 1.2, 0.4, 0.25, -0.75, 0);
+                this.torso.add(this.legR);
+                this.torso.add(this.legL);
+
+                this.defaultMat = bodyMat;
+                this.hitMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // 受击闪白材质
+            }
+
+            setState(newState) {
+                if (this.state === 'HIT' && this.stateTime < 0.3) return; // 受击硬直不能立刻打断
+                this.state = newState;
+                this.stateTime = 0;
+            }
+
+            takeDamage(amount, knockbackX) {
+                if (this.isInvincible || this.hp <= 0) return;
+                this.hp -= amount;
+                this.setState('HIT');
+                this.vx = knockbackX;
+                this.vy = 0.2; // 小击飞
+                
+                // 更新UI
+                const hpBar = this.isPlayer ? document.getElementById('player-hp') : document.getElementById('enemy-hp');
+                hpBar.style.width = Math.max(0, this.hp) + '%';
+                
+                // 材质闪白视觉反馈
+                this.torso.material = this.hitMat;
+                setTimeout(() => { if(this.torso) this.torso.material = this.defaultMat; }, 100);
+
+                if (this.hp <= 0) endGame(this.isPlayer ? 'LOSE' : 'WIN');
+            }
+
+            update(dt) {
+                this.stateTime += dt;
+
+                // 1. 物理更新
+                this.vy -= 1.5 * dt; // 重力
+                this.y += this.vy;
+                this.x += this.vx * dt;
+
+                // 地面碰撞
+                if (this.y <= 0) {
+                    this.y = 0;
+                    this.vy = 0;
+                    if (this.state === 'JUMP') this.setState('IDLE');
+                }
+
+                // 摩擦力与衰减
+                if (this.state !== 'DODGE') {
+                    this.vx *= 0.85; // 地面摩擦
+                }
+
+                // 边界限制
+                this.x = Math.max(-15, Math.min(15, this.x));
+
+                // 更新模型位置
+                this.group.position.set(this.x, this.y, 0);
+                
+                // 面向
+                const targetRotY = this.facing === 1 ? Math.PI/2 : -Math.PI/2;
+                this.group.rotation.y += (targetRotY - this.group.rotation.y) * 0.2;
+
+                // 2. 动画状态机 (使用简单的三角函数和插值)
+                this.torso.rotation.set(0,0,0);
+                this.armR.rotation.set(0,0,0);
+                this.armL.rotation.set(0,0,0);
+                this.legR.rotation.set(0,0,0);
+                this.legL.rotation.set(0,0,0);
+                this.isInvincible = false;
+
+                switch(this.state) {
+                    case 'IDLE':
+                        this.torso.position.y = 1.8 + Math.sin(globalTime * 5) * 0.05;
+                        this.armR.rotation.x = Math.sin(globalTime * 5) * 0.1;
+                        this.armL.rotation.x = -Math.sin(globalTime * 5) * 0.1;
+                        break;
+                    case 'RUN':
+                        this.torso.position.y = 1.8 + Math.abs(Math.sin(globalTime * 15)) * 0.1;
+                        this.torso.rotation.z = this.facing * 0.1;
+                        this.armR.rotation.x = Math.sin(globalTime * 15) * 1;
+                        this.armL.rotation.x = -Math.sin(globalTime * 15) * 1;
+                        this.legR.rotation.x = -Math.sin(globalTime * 15) * 1;
+                        this.legL.rotation.x = Math.sin(globalTime * 15) * 1;
+                        break;
+                    case 'JUMP':
+                        this.torso.position.y = 1.8;
+                        this.armR.rotation.z = 2.5;
+                        this.armL.rotation.z = -2.5;
+                        this.legR.rotation.x = -0.5;
+                        this.legL.rotation.x = 0.2;
+                        break;
+                    case 'ATTACK':
+                        // 0.3秒的攻击动画
+                        if (this.stateTime < 0.1) {
+                            // 蓄力后摇
+                            this.armR.rotation.x = -0.5;
+                            this.torso.rotation.y = -0.2 * this.facing;
+                        } else if (this.stateTime < 0.25) {
+                            // 出拳
+                            this.armR.rotation.x = 1.5;
+                            this.torso.rotation.y = 0.5 * this.facing;
+                            // 攻击判定帧 (只有在这几帧产生伤害)
+                            if (this.stateTime > 0.12 && this.stateTime < 0.15) {
+                                checkHit(this, 1.8, 10, 15); // 角色, 范围, 伤害, 击退
+                            }
+                        } else if (this.stateTime > 0.3) {
+                            this.setState('IDLE');
+                        }
+                        break;
+                    case 'DODGE':
+                        this.isInvincible = true; // 闪避无敌帧
+                        this.torso.rotation.x = -0.3; // 后仰特效
+                        this.torso.position.y = 1.6;
+                        if (this.stateTime > 0.3) {
+                            this.setState('IDLE');
+                        }
+                        break;
+                    case 'SKILL':
+                        // 发射能量波
+                        this.armL.rotation.x = 1.5;
+                        this.armR.rotation.x = 1.5;
+                        if (this.stateTime > 0.15 && this.stateTime < 0.18) {
+                            spawnProjectile(this.x + this.facing * 1.5, this.facing);
+                        }
+                        if (this.stateTime > 0.4) this.setState('IDLE');
+                        break;
+                    case 'HIT':
+                        this.torso.rotation.x = -0.5; // 受击后仰
+                        this.armR.rotation.z = 1.5;
+                        this.armL.rotation.z = -1.5;
+                        if (this.stateTime > 0.4) this.setState('IDLE');
+                        break;
+                }
+            }
+        }
+
+        // --- 4. 技能飞行物系统 ---
+        const projectiles = [];
+        const projGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const projMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 1 });
+        
+        function spawnProjectile(x, dir) {
+            const mesh = new THREE.Mesh(projGeo, projMat);
+            mesh.position.set(x, 1.5, 0);
+            scene.add(mesh);
+            projectiles.push({ mesh, x, dir, life: 1.5, active: true });
+        }
+
+        // --- 5. 实例化游戏对象 ---
+        const player = new Fighter(0x00ff88, true, -4);
+        const enemy = new Fighter(0xff3366, false, 4);
+        enemy.facing = -1;
+
+        // --- 6. 输入与 UI 处理 ---
+        const input = { joystickX: 0, btnJump: false, btnAttack: false, btnDodge: false, btnSkill: false };
+        
+        // 摇杆逻辑
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let touchStartPos = { x: 0, y: 0 };
+        let joystickActive = false;
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            joystickActive = true;
+            touchStartPos.x = e.touches[0].clientX;
+            touchStartPos.y = e.touches[0].clientY;
+            joystickKnob.style.transition = 'none';
+        });
+
+        joystickZone.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            e.preventDefault();
+            let dx = e.touches[0].clientX - touchStartPos.x;
+            let dy = e.touches[0].clientY - touchStartPos.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const maxRadius = 45;
+            if (dist > maxRadius) {
+                dx = (dx / dist) * maxRadius;
+                dy = (dy / dist) * maxRadius;
+            }
+            joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            
+            // 死区处理，输出 -1 到 1
+            input.joystickX = Math.abs(dx) > 10 ? (dx > 0 ? 1 : -1) : 0;
+        });
+
+        const resetJoystick = () => {
+            joystickActive = false;
+            input.joystickX = 0;
+            joystickKnob.style.transition = 'transform 0.1s';
+            joystickKnob.style.transform = `translate(0px, 0px)`;
+        };
+        joystickZone.addEventListener('touchend', resetJoystick);
+        joystickZone.addEventListener('touchcancel', resetJoystick);
+
+        // 按钮逻辑 (通过 dataset 或 id 区分)
+        const bindButton = (id, actionKey) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); input[actionKey] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); input[actionKey] = false; });
+        };
+        bindButton('btn-jump', 'btnJump');
+        bindButton('btn-attack', 'btnAttack');
+        bindButton('btn-dodge', 'btnDodge');
+        bindButton('btn-skill', 'btnSkill');
+
+        // 键盘回退支持 (方便PC端调试)
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'KeyA') input.joystickX = -1;
+            if(e.code === 'KeyD') input.joystickX = 1;
+            if(e.code === 'KeyW') input.btnJump = true;
+            if(e.code === 'KeyJ') input.btnAttack = true;
+            if(e.code === 'KeyK') input.btnDodge = true;
+            if(e.code === 'KeyL') input.btnSkill = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if(e.code === 'KeyA' || e.code === 'KeyD') input.joystickX = 0;
+            if(e.code === 'KeyW') input.btnJump = false;
+            if(e.code === 'KeyJ') input.btnAttack = false;
+            if(e.code === 'KeyK') input.btnDodge = false;
+            if(e.code === 'KeyL') input.btnSkill = false;
+        });
+
+        // 全屏按钮
+        document.getElementById('btn-fullscreen').addEventListener('click', () => {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            }
+            document.getElementById('btn-fullscreen').style.display = 'none';
+        });
+
+        // --- 7. 战斗逻辑与打击判定 ---
+        function triggerHitStop(duration = 0.08) {
+            hitStopTimer = duration; // 游戏暂停渲染动画
+            cameraShake = 0.3;       // 触发屏幕震动
+        }
+
+        function checkHit(attacker, range, dmg, knockback) {
+            const target = attacker.isPlayer ? enemy : player;
+            if (target.state === 'HIT' || target.isInvincible) return;
+
+            const dist = target.x - attacker.x;
+            // 检查距离和方向是否正确
+            if (Math.abs(dist) < range && Math.sign(dist) === attacker.facing) {
+                target.takeDamage(dmg, attacker.facing * knockback);
+                triggerHitStop();
+            }
+        }
+
+        function endGame(result) {
+            gameActive = false;
+            const overlay = document.getElementById('msg-overlay');
+            overlay.innerText = result === 'WIN' ? "YOU WIN!" : "GAME OVER";
+            overlay.style.opacity = 1;
+            // 3秒后刷新重来
+            setTimeout(() => location.reload(), 3000);
+        }
+
+        // --- 8. 敌人 AI ---
+        function updateEnemyAI(dt) {
+            if (!gameActive || enemy.state === 'HIT' || enemy.state === 'DODGE') return;
+            
+            const dist = player.x - enemy.x;
+            enemy.facing = dist > 0 ? 1 : -1;
+
+            if (Math.abs(dist) > 2.5) {
+                // 追击
+                if (enemy.state !== 'JUMP' && enemy.state !== 'ATTACK') {
+                    enemy.vx = enemy.facing * 4;
+                    enemy.setState('RUN');
+                }
+            } else {
+                // 攻击范围内
+                enemy.vx = 0;
+                if (enemy.state !== 'ATTACK' && Math.random() < 0.05) { // 随机攻击概率
+                    enemy.setState('ATTACK');
+                } else if (enemy.state !== 'ATTACK') {
+                    enemy.setState('IDLE');
+                }
+            }
+        }
+
+        // --- 9. 主循环 ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            const dt = Math.min(clock.getDelta(), 0.1);
+            globalTime += dt;
+
+            // HitStop 卡肉效果 (暂停逻辑更新)
+            if (hitStopTimer > 0) {
+                hitStopTimer -= dt;
+            } else if (gameActive) {
+                // --- 玩家输入处理 ---
+                if (player.state !== 'HIT' && player.state !== 'ATTACK' && player.state !== 'DODGE' && player.state !== 'SKILL') {
+                    if (input.btnAttack) {
+                        player.setState('ATTACK');
+                        input.btnAttack = false; // 防连发
+                    } else if (input.btnSkill) {
+                        player.setState('SKILL');
+                        input.btnSkill = false;
+                    } else if (input.btnDodge) {
+                        player.setState('DODGE');
+                        player.vx = player.facing * 18; // 突进闪避
+                        input.btnDodge = false;
+                    } else if (input.btnJump && player.y === 0) {
+                        player.setState('JUMP');
+                        player.vy = 0.45;
+                        input.btnJump = false;
+                    } else if (input.joystickX !== 0) {
+                        player.vx = input.joystickX * 8;
+                        player.facing = input.joystickX;
+                        if (player.y === 0) player.setState('RUN');
+                    } else {
+                        if (player.y === 0) player.setState('IDLE');
+                    }
+                }
+
+                // 更新角色
+                player.update(dt);
+                updateEnemyAI(dt);
+                enemy.update(dt);
+
+                // 更新飞行物(波动拳)
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    if (!p.active) continue;
+                    
+                    p.x += p.dir * 15 * dt;
+                    p.mesh.position.x = p.x;
+                    p.mesh.rotation.x += 10 * dt;
+                    p.life -= dt;
+
+                    // 碰撞检测：波动拳 vs 敌人
+                    const target = p.dir === player.facing ? enemy : player;
+                    if (Math.abs(target.x - p.x) < 1.0 && !target.isInvincible && target.state !== 'HIT') {
+                        target.takeDamage(15, p.dir * 8);
+                        triggerHitStop(0.05);
+                        p.active = false;
+                        scene.remove(p.mesh);
+                    } else if (p.life <= 0) {
+                        p.active = false;
+                        scene.remove(p.mesh);
+                    }
+                }
+            }
+
+            // 相机逻辑 (平滑跟随与震动)
+            let targetCamX = (player.x + enemy.x) / 2; // 相机始终在两人中间
+            
+            // 震动处理
+            let shakeX = 0, shakeY = 0;
+            if (cameraShake > 0) {
+                shakeX = (Math.random() - 0.5) * cameraShake;
+                shakeY = (Math.random() - 0.5) * cameraShake;
+                cameraShake *= 0.8; // 震动衰减
+                if (cameraShake < 0.01) cameraShake = 0;
+            }
+
+            camera.position.x += (targetCamX - camera.position.x) * 0.1 + shakeX;
+            camera.position.y = 4 + shakeY;
+            camera.lookAt(camera.position.x, 2, 0);
+
+            // WebGPU 渲染
+            renderer.render(scene, camera);
+        }
+
+        // 启动循环 (Three.js WebGPU 推荐方式)
+        renderer.setAnimationLoop(animate);
+
+        // 响应窗口拉伸
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

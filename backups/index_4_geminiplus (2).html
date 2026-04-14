@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebGPU 3D Fighter - Landscape</title>
+    <style>
+        /* 基础重置 */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* 强制横屏提示 (如果原生API失败时的兜底) */
+        @media screen and (orientation: portrait) {
+            #rotate-tip { display: flex !important; }
+        }
+
+        #rotate-tip { display: none; position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 24px; font-weight: bold; }
+
+        /* 3D 画布容器 (绝对置底，修复黑屏元凶) */
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        /* UI层 */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
+
+        /* 初始开始界面 */
+        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 50; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #start-btn { padding: 20px 50px; font-size: 30px; font-weight: 900; color: #fff; background: linear-gradient(45deg, #ff3366, #ff9933); border: 4px solid #fff; border-radius: 40px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); pointer-events: auto; cursor: pointer; text-transform: uppercase; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* HUD 血条 */
+        .hud { display: flex; justify-content: space-between; padding: 10px 20px; width: 100%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%); }
+        .hp-container { width: 40%; }
+        .hp-name { color: white; font-weight: 900; font-size: 16px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px; }
+        .hp-bg { width: 100%; height: 25px; background: #222; border: 3px solid #ddd; border-radius: 5px; transform: skewX(-20deg); overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .hp-fill { height: 100%; background: linear-gradient(90deg, #00ffaa, #00aa55); width: 100%; transition: width 0.1s; }
+        .enemy-hp .hp-fill { background: linear-gradient(90deg, #ffaa00, #ff0055); float: right; }
+
+        /* 摇杆与按键 (适配横屏布局) */
+        #joystick-zone { position: absolute; bottom: 20px; left: 40px; width: 140px; height: 140px; background: rgba(255,255,255,0.1); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; }
+        #joystick-knob { position: absolute; top: 40px; left: 40px; width: 60px; height: 60px; background: rgba(255,255,255,0.9); border-radius: 50%; pointer-events: none; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        
+        .btn-group { position: absolute; bottom: 20px; right: 40px; width: 200px; height: 200px; pointer-events: auto; }
+        .act-btn { position: absolute; width: 65px; height: 65px; border: 3px solid rgba(255,255,255,0.7); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; text-shadow: 1px 1px 2px #000; box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+        .act-btn:active { transform: scale(0.9); filter: brightness(1.5); }
+        
+        #btn-attack { bottom: 10px; left: 10px; background: rgba(255,50,50,0.7); } /* 红 */
+        #btn-jump { bottom: 85px; left: 85px; background: rgba(200,200,200,0.5); } /* 灰 */
+        #btn-dodge { bottom: 10px; left: 120px; background: rgba(50,255,50,0.6); } /* 绿 */
+        #btn-skill { bottom: 120px; left: 10px; background: rgba(50,150,255,0.7); } /* 蓝 */
+
+        #msg-overlay { position: absolute; top: 40%; left: 0; width: 100%; text-align: center; color: #ffcc00; font-size: 50px; font-weight: 900; text-shadow: 4px 4px 0 #000; display: none; pointer-events: auto; z-index: 20; cursor: pointer; }
+    </style>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.webgpu.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- 竖屏警告 -->
+    <div id="rotate-tip">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.46L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zM10 15l2 2 4-4-4-4-2 2z"/></svg>
+        <p>PLEASE ROTATE YOUR DEVICE<br>请将手机横屏</p>
+    </div>
+
+    <!-- 修复: 独立的 3D 渲染层，确保不被阻挡 -->
+    <div id="canvas-container"></div>
+
+    <!-- 开始界面 -->
+    <div id="start-screen">
+        <div id="start-btn">TAP TO START</div>
+        <p style="color:white; margin-top:20px; text-align:center;">
+            左侧摇杆移动 | 右侧按键攻击(红)/技能(蓝)<br>保证手机开启自动旋转
+        </p>
+    </div>
+
+    <!-- 游戏 UI 层 -->
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="hp-container">
+                <div class="hp-name">PLAYER</div>
+                <div class="hp-bg"><div id="hp-player" class="hp-fill"></div></div>
+            </div>
+            <div class="hp-container enemy-hp">
+                <div class="hp-name" style="text-align: right;">AI DUMMY</div>
+                <div class="hp-bg"><div id="hp-enemy" class="hp-fill"></div></div>
+            </div>
+        </div>
+        
+        <div id="joystick-zone"><div id="joystick-knob"></div></div>
+        
+        <div class="btn-group">
+            <div id="btn-attack" class="act-btn">ATK</div>
+            <div id="btn-jump" class="act-btn">JMP</div>
+            <div id="btn-dodge" class="act-btn">DASH</div>
+            <div id="btn-skill" class="act-btn">SKL</div>
+        </div>
+        <div id="msg-overlay">TAP TO RESTART</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        const CONFIG = { gravity: -40, speed: 12, jumpForce: 18, dodgeSpeed: 30, floorY: 0, boundsX: 18 };
+        const STATE = { IDLE: 0, RUN: 1, JUMP: 2, ATTACK: 3, DODGE: 4, SKILL: 5, HURT: 6, DEAD: 7 };
+        
+        let scene, camera, renderer;
+        let player, enemy;
+        let lastTime = performance.now();
+        let hitStopTimer = 0, cameraShake = 0;
+        let projectiles = [], particles = [];
+        let gameStatus = 'MENU'; // 控制 AI 和输入的开关
+
+        const Input = { x: 0, attack: false, jump: false, dodge: false, skill: false };
+
+        // --- 全屏与强制横屏 API ---
+        async function enterFullscreenAndLandscape() {
+            const doc = document.documentElement;
+            try {
+                if (doc.requestFullscreen) await doc.requestFullscreen();
+                else if (doc.webkitRequestFullscreen) await doc.webkitRequestFullscreen();
+                
+                // 强制锁定横屏 (仅在全屏后有效)
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.warn("屏幕旋转API可能受限，请物理旋转手机", err);
+            }
+        }
+
+        // --- UI 与控制 ---
+        function setupControls() {
+            document.getElementById('start-btn').addEventListener('click', async () => {
+                await enterFullscreenAndLandscape();
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('ui-layer').style.display = 'block';
+                gameStatus = 'PLAYING'; // 开始游戏，AI激活
+            });
+
+            const bindBtn = (id, key) => {
+                const el = document.getElementById(id);
+                const press = (e) => { e.preventDefault(); e.stopPropagation(); Input[key] = true; };
+                const release = (e) => { e.preventDefault(); e.stopPropagation(); Input[key] = false; };
+                el.addEventListener('touchstart', press, { passive: false });
+                el.addEventListener('touchend', release, { passive: false });
+            };
+            bindBtn('btn-attack', 'attack'); bindBtn('btn-jump', 'jump');
+            bindBtn('btn-dodge', 'dodge'); bindBtn('btn-skill', 'skill');
+
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            let jActive = false;
+            
+            const updateJoy = (clientX) => {
+                const rect = zone.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                let dx = clientX - cx;
+                dx = Math.max(-50, Math.min(50, dx));
+                knob.style.transform = `translate(${dx}px, 0px)`;
+                Input.x = dx > 15 ? 1 : (dx < -15 ? -1 : 0);
+            };
+
+            zone.addEventListener('touchstart', (e) => { e.preventDefault(); jActive = true; updateJoy(e.touches[0].clientX); }, { passive: false });
+            zone.addEventListener('touchmove', (e) => { e.preventDefault(); if(jActive) updateJoy(e.touches[0].clientX); }, { passive: false });
+            zone.addEventListener('touchend', (e) => { e.preventDefault(); jActive = false; knob.style.transform = `translate(0px, 0px)`; Input.x = 0; }, { passive: false });
+        }
+
+        // --- 特效系统 ---
+        function spawnParticles(pos, color) {
+            const geom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            for(let i=0; i<12; i++) {
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.copy(pos);
+                scene.add(mesh);
+                particles.push({ mesh, life: 1.0, vx: (Math.random()-0.5)*20, vy: Math.random()*15, vz: (Math.random()-0.5)*20 });
+            }
+        }
+
+        function checkAABB(posA, rA, posB, rB, hB) {
+            return Math.abs(posA.x - posB.x) < (rA + rB) && Math.abs(posA.y - (posB.y + hB/2)) < (rA + hB/2);
+        }
+
+        // --- 角色类 ---
+        class Fighter {
+            constructor(isPlayer, color) {
+                this.isPlayer = isPlayer;
+                this.hp = 100;
+                this.pos = new THREE.Vector3(isPlayer ? -5 : 5, CONFIG.floorY, 0);
+                this.vel = new THREE.Vector3(0, 0, 0);
+                this.facing = isPlayer ? 1 : -1;
+                this.state = STATE.IDLE;
+                this.stateTimer = 0;
+                this.color = color;
+                this.hitConnected = false;
+                this.buildMesh();
+            }
+
+            buildMesh() {
+                this.group = new THREE.Group();
+                // 修复: 为了确保在任何低端设备都不黑屏，使用最基础的材质
+                this.mat = new THREE.MeshLambertMaterial({ color: this.color });
+                
+                const box = (w,h,d, yOff) => { 
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), this.mat); 
+                    m.position.y = yOff; m.castShadow = true; return m; 
+                };
+
+                this.body = box(1.0, 1.4, 0.6, 1.6);
+                this.head = box(0.7, 0.7, 0.7, 1.05); this.body.add(this.head);
+                
+                const createLimb = (w,h,d, px, py, pz) => {
+                    const pivot = new THREE.Group(); pivot.position.set(px, py, pz);
+                    const mesh = box(w,h,d, -h/2); pivot.add(mesh); return pivot;
+                };
+
+                this.armL = createLimb(0.35, 1.0, 0.35, -0.7, 0.6, 0); this.body.add(this.armL);
+                this.armR = createLimb(0.35, 1.0, 0.35,  0.7, 0.6, 0); this.body.add(this.armR);
+                this.legL = createLimb(0.4, 1.1, 0.4, -0.3, -0.7, 0); this.body.add(this.legL);
+                this.legR = createLimb(0.4, 1.1, 0.4,  0.3, -0.7, 0); this.body.add(this.legR);
+
+                this.group.add(this.body);
+                scene.add(this.group);
+            }
+
+            takeDamage(amount, dirX, isHeavy) {
+                if (this.state === STATE.DODGE || this.state === STATE.DEAD) return;
+                this.hp -= amount;
+                updateUI();
+                hitStopTimer = 0.12; 
+                cameraShake = 0.4;
+                
+                this.vel.x = dirX * (isHeavy ? 15 : 8);
+                this.vel.y = isHeavy ? 12 : 4;
+                
+                if (this.hp <= 0) {
+                    this.hp = 0; this.changeState(STATE.DEAD);
+                    if (this.isPlayer) endGame("YOU LOSE!"); else endGame("KO! YOU WIN!");
+                } else {
+                    this.changeState(STATE.HURT);
+                    this.mat.emissive.setHex(0xaaaaaa);
+                    setTimeout(() => { if(this.mat) this.mat.emissive.setHex(0x000000); }, 100);
+                }
+            }
+
+            changeState(newState) {
+                if (this.state === STATE.DEAD) return;
+                this.state = newState;
+                this.stateTimer = 0;
+                this.hitConnected = false;
+                
+                this.body.rotation.set(0,0,0); this.head.rotation.set(0,0,0);
+                this.armL.rotation.set(0,0,0); this.armR.rotation.set(0,0,0);
+                this.legL.rotation.set(0,0,0); this.legR.rotation.set(0,0,0);
+                this.mat.opacity = 1.0; this.mat.transparent = false;
+
+                if(newState === STATE.DODGE) {
+                    this.vel.x = this.facing * CONFIG.dodgeSpeed;
+                    this.vel.y = 0;
+                    this.mat.opacity = 0.3; this.mat.transparent = true; 
+                }
+            }
+
+            update(dt, opponent) {
+                this.stateTimer += dt;
+                let onGround = this.pos.y <= CONFIG.floorY;
+
+                // 物理重力
+                if (!onGround) { this.vel.y += CONFIG.gravity * dt; } 
+                else if (this.vel.y < 0) { this.vel.y = 0; this.pos.y = CONFIG.floorY; if (this.state === STATE.HURT) this.changeState(STATE.IDLE); }
+
+                if (onGround && ![STATE.RUN, STATE.DODGE, STATE.ATTACK].includes(this.state)) { this.vel.x *= 0.7; }
+
+                // --- 游戏进行中才允许控制和 AI ---
+                if (gameStatus === 'PLAYING') {
+                    if (this.isPlayer && [STATE.IDLE, STATE.RUN, STATE.JUMP].includes(this.state)) {
+                        if (Input.x !== 0) {
+                            this.vel.x = Input.x * CONFIG.speed; this.facing = Input.x;
+                            if (onGround) this.changeState(STATE.RUN);
+                        } else if (onGround && this.state === STATE.RUN) { this.changeState(STATE.IDLE); }
+
+                        if (Input.jump && onGround) { this.vel.y = CONFIG.jumpForce; this.changeState(STATE.JUMP); Input.jump = false; }
+                        if (Input.attack && onGround) { this.changeState(STATE.ATTACK); Input.attack = false; }
+                        if (Input.dodge && onGround) { this.changeState(STATE.DODGE); Input.dodge = false; }
+                        if (Input.skill && onGround) { this.changeState(STATE.SKILL); Input.skill = false; }
+                    }
+
+                    if (!this.isPlayer && [STATE.IDLE, STATE.RUN].includes(this.state)) {
+                        const dist = opponent.pos.x - this.pos.x;
+                        this.facing = dist > 0 ? 1 : -1;
+                        if (Math.abs(dist) > 3.0) {
+                            this.vel.x = this.facing * (CONFIG.speed * 0.7);
+                            if (onGround) this.changeState(STATE.RUN);
+                        } else {
+                            this.vel.x = 0;
+                            if (onGround && Math.random() < 0.04) this.changeState(STATE.ATTACK);
+                            else this.changeState(STATE.IDLE);
+                        }
+                    }
+                }
+
+                // 攻击与技能逻辑
+                if (this.state === STATE.ATTACK) {
+                    if (onGround) this.vel.x = this.facing * 6;
+                    if (this.stateTimer > 0.15 && this.stateTimer < 0.25 && !this.hitConnected) {
+                        let hitX = this.pos.x + this.facing * 1.8;
+                        if (checkAABB({x: hitX, y: this.pos.y+1.2}, 1.0, opponent.pos, 1.0, 2.0) && opponent.state !== STATE.DEAD) {
+                            opponent.takeDamage(10, this.facing, false);
+                            spawnParticles(new THREE.Vector3(hitX, this.pos.y+1.5, 0), 0xffaa00);
+                            this.hitConnected = true;
+                        }
+                    }
+                    if (this.stateTimer > 0.4) this.changeState(STATE.IDLE);
+                }
+
+                if (this.state === STATE.DODGE && this.stateTimer > 0.3) this.changeState(STATE.IDLE);
+
+                if (this.state === STATE.SKILL) {
+                    this.vel.x = 0;
+                    if (this.stateTimer > 0.2 && !this.hitConnected) {
+                        this.hitConnected = true;
+                        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                        mesh.position.set(this.pos.x + this.facing, this.pos.y + 1.2, 0);
+                        scene.add(mesh);
+                        projectiles.push({ mesh, vx: this.facing * 25, life: 1.5, owner: this });
+                    }
+                    if (this.stateTimer > 0.6) this.changeState(STATE.IDLE);
+                }
+
+                // 更新坐标
+                this.pos.addScaledVector(this.vel, dt);
+                this.pos.x = Math.max(-CONFIG.boundsX, Math.min(CONFIG.boundsX, this.pos.x));
+
+                // 防穿模推挤
+                if (opponent.state !== STATE.DEAD && this.state !== STATE.DODGE && opponent.state !== STATE.DODGE) {
+                    const dist = opponent.pos.x - this.pos.x;
+                    if (Math.abs(dist) < 1.4 && this.pos.y < opponent.pos.y + 2.0) {
+                        this.pos.x = opponent.pos.x - Math.sign(dist) * 1.4;
+                    }
+                }
+
+                this.group.position.copy(this.pos);
+                this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, this.facing > 0 ? Math.PI/2 : -Math.PI/2, 0.4);
+                this.animateLimb();
+            }
+
+            animateLimb() {
+                const t = this.stateTimer;
+                switch (this.state) {
+                    case STATE.IDLE:
+                        this.body.position.y = 1.6 + Math.sin(t * 5) * 0.05;
+                        this.armL.rotation.x = Math.sin(t * 3) * 0.1; this.armR.rotation.x = Math.sin(t * 3 + Math.PI) * 0.1;
+                        break;
+                    case STATE.RUN:
+                        this.body.position.y = 1.6 + Math.abs(Math.sin(t * 20)) * 0.1;
+                        this.armL.rotation.x = Math.sin(t * 15) * 1.0; this.armR.rotation.x = -Math.sin(t * 15) * 1.0;
+                        this.legL.rotation.x = -Math.sin(t * 15) * 1.0; this.legR.rotation.x = Math.sin(t * 15) * 1.0;
+                        break;
+                    case STATE.JUMP:
+                        this.legL.rotation.x = -0.5; this.legR.rotation.x = 0.3; this.armL.rotation.x = -0.5; this.armR.rotation.x = 0.5;
+                        break;
+                    case STATE.ATTACK:
+                        if(t < 0.2) { this.armR.rotation.x = t * 15; this.body.rotation.x = 0.3; } 
+                        else { this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, 0, 0.2); this.body.rotation.x = 0; }
+                        break;
+                    case STATE.DODGE:
+                        this.body.rotation.x = 0.6; this.head.rotation.x = -0.4; this.armL.rotation.x = -1; this.armR.rotation.x = -1;
+                        break;
+                    case STATE.SKILL:
+                        if(t < 0.2) { this.armL.rotation.x = -2.5; this.armR.rotation.x = -2.5; }
+                        break;
+                    case STATE.HURT:
+                        this.body.rotation.x = -0.5; this.head.rotation.x = 0.5; this.armL.rotation.x = -0.5; this.armR.rotation.x = -0.5;
+                        break;
+                    case STATE.DEAD:
+                        this.body.rotation.x = -Math.PI / 2; this.body.position.y = 0.5;
+                        break;
+                }
+            }
+        }
+
+        async function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // WebGPU / WebGL 渲染器
+            renderer = new THREE.WebGPURenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+            
+            await renderer.init(); // 必须 await
+
+            scene = new THREE.Scene();
+            // 修复: 给定明确的深蓝色背景，杜绝因透明造成的黑屏
+            scene.background = new THREE.Color(0x1a2a40);
+            scene.fog = new THREE.Fog(0x1a2a40, 10, 45);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 6, 22);
+
+            // 光源增强，确保物体可见
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+            dirLight.position.set(5, 15, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.left = -20; dirLight.shadow.camera.right = 20;
+            scene.add(dirLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+
+            // 地面
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(80, 30), 
+                new THREE.MeshLambertMaterial({ color: 0x223344 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // 远景霓虹网格
+            const grid = new THREE.GridHelper(80, 40, 0x00ffff, 0x112233);
+            grid.position.y = 0.05;
+            scene.add(grid);
+
+            player = new Fighter(true, 0x0088ff);
+            enemy = new Fighter(false, 0xff2222);
+
+            setupControls();
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            document.getElementById('msg-overlay').addEventListener('click', () => {
+                player.hp = 100; player.pos.set(-5,0,0); player.changeState(STATE.IDLE);
+                enemy.hp = 100; enemy.pos.set(5,0,0); enemy.changeState(STATE.IDLE);
+                gameStatus = 'PLAYING';
+                document.getElementById('msg-overlay').style.display = 'none';
+                updateUI();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function updateUI() {
+            document.getElementById('hp-player').style.width = `${player.hp}%`;
+            document.getElementById('hp-enemy').style.width = `${enemy.hp}%`;
+        }
+
+        function endGame(msg) {
+            gameStatus = 'GAMEOVER';
+            const el = document.getElementById('msg-overlay');
+            el.innerHTML = `${msg}<br><span style='font-size:24px; color:#fff;'>TAP HERE TO RESTART</span>`;
+            el.style.display = 'block';
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            let dt = (time - lastTime) / 1000;
+            lastTime = time;
+            if (dt > 0.1) dt = 0.1;
+
+            if (hitStopTimer > 0) {
+                hitStopTimer -= dt;
+            } else {
+                player.update(dt, enemy);
+                enemy.update(dt, player);
+                
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    let p = particles[i]; p.life -= dt * 2.5;
+                    if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); } 
+                    else {
+                        p.vy += CONFIG.gravity * dt;
+                        p.mesh.position.add(new THREE.Vector3(p.vx, p.vy, p.vz).multiplyScalar(dt));
+                        p.mesh.scale.setScalar(p.life);
+                    }
+                }
+
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    let p = projectiles[i];
+                    p.mesh.position.x += p.vx * dt;
+                    p.life -= dt;
+                    const target = p.owner === player ? enemy : player;
+                    if (checkAABB(p.mesh.position, 0.6, target.pos, 1.0, 2.0) && target.state !== STATE.DEAD) {
+                        target.takeDamage(15, Math.sign(p.vx), true);
+                        spawnParticles(p.mesh.position, 0x00ffff);
+                        p.life = 0; 
+                    }
+                    if (p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
+                }
+
+                let targetCamX = (player.pos.x + enemy.pos.x) / 2;
+                targetCamX = Math.max(-8, Math.min(8, targetCamX));
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 0.1);
+                
+                if (cameraShake > 0) {
+                    camera.position.x += (Math.random() - 0.5) * cameraShake * 2;
+                    camera.position.y = 6 + (Math.random() - 0.5) * cameraShake * 2;
+                    cameraShake -= dt;
+                } else {
+                    camera.position.y = 6;
+                }
+                camera.lookAt(camera.position.x, 2, 0);
+            }
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>

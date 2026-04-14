@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Ultimate Fighter: Underground 4.0</title>
+    <style>
+        /* ================= KOF 赛博黑街风 UI ================= */
+        :root { --c-main: #00ffff; --c-accent: #ff0055; --c-bg: #050508; --c-panel: rgba(10, 15, 25, 0.85); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--c-bg); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; font-family: 'Arial Black', Impact, sans-serif; }
+        
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background-color: var(--c-bg); }
+        
+        .top-bar { position: absolute; top: 10px; width: 100%; display: flex; justify-content: center; z-index: 100; pointer-events: none; }
+        #btn-fs { pointer-events: auto; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--c-main); color: var(--c-main); padding: 5px 20px; border-radius: 15px; font-size: 12px; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+        #btn-fs:hover { background: var(--c-main); color: #000; }
+
+        /* 暗黑系选人界面 */
+        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(20,10,30,0.9) 0%, rgba(5,5,10,0.98) 100%); z-index: 50; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
+        .logo { font-size: 8vh; font-style: italic; color: #fff; text-shadow: 0 0 10px var(--c-main), 3px 3px 0px var(--c-accent); margin-bottom: 3vh; letter-spacing: 4px; }
+        .roster { display: flex; gap: 2vw; margin-bottom: 3vh; flex-wrap: wrap; justify-content: center; }
+        .char-card { width: 16vw; max-width: 130px; padding: 10px; background: var(--c-panel); border: 2px solid #333; text-align: center; color: #777; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .char-card.active { border-color: var(--c-main); color: #fff; box-shadow: 0 0 20px rgba(0,255,255,0.4), inset 0 0 15px rgba(0,255,255,0.1); transform: translateY(-5px); }
+        .char-icon { width: 6vh; height: 6vh; margin: 0 auto 10px; border-radius: 8px; border: 2px solid #222; box-shadow: inset 0 0 10px #000; }
+        .char-stats { font-size: 10px; text-align: left; margin-top: 10px; display: none; line-height: 1.4; color: var(--c-main); }
+        .char-card.active .char-stats { display: block; }
+        .btn-start { padding: 12px 50px; font-size: 24px; color: #000; background: var(--c-main); border: none; border-radius: 8px; cursor: pointer; font-weight: 900; box-shadow: 0 0 20px var(--c-main); transition: 0.2s; text-transform: uppercase; }
+        .btn-start:active { transform: scale(0.95); box-shadow: 0 0 10px var(--c-main); }
+
+        /* 战斗 HUD - 霓虹黑风 */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
+        .hud { display: flex; justify-content: space-between; padding: 2vh 4vw; width: 100%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); }
+        .player-info { width: 42%; }
+        .p-name { color: #fff; font-size: 20px; text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-main); margin-bottom: 5px; font-style: italic; font-weight: 900; letter-spacing: 1px; }
+        .enemy-info .p-name { text-align: right; text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-accent); }
+        .hp-bar { width: 100%; height: 25px; background: rgba(30,30,40,0.8); border: 2px solid #fff; transform: skewX(-15deg); box-shadow: 4px 4px 0 rgba(0,0,0,0.6); overflow: hidden; }
+        .hp-fill { height: 100%; background: linear-gradient(90deg, #00ffaa, #ccffaa); width: 100%; transition: width 0.15s ease-out; box-shadow: 0 0 10px #00ffaa; }
+        .enemy-info .hp-fill { background: linear-gradient(90deg, #ff0055, #ffaa00); float: right; box-shadow: 0 0 10px #ff0055; }
+        .combo-counter { position: absolute; top: 80px; left: 4vw; font-size: 45px; color: #ffdd00; text-shadow: 3px 3px 0 #ff0000, 0 0 15px #ff8800; opacity: 0; transition: opacity 0.2s; font-style: italic; transform: skewX(-10deg); }
+
+        /* 操作区 - 降低亮度，霓虹边框 */
+        #dir-zone { position: absolute; bottom: 30px; left: 40px; width: 160px; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        #slider-track { width: 100%; height: 50px; background: rgba(0,0,0,0.5); border-radius: 25px; border: 2px solid rgba(0,255,255,0.4); position: relative; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        #slider-knob { width: 60px; height: 60px; background: rgba(200,255,255,0.9); border-radius: 50%; box-shadow: 0 0 15px var(--c-main); position: absolute; top: -7px; left: 48px; transition: transform 0.05s linear; pointer-events: none; border: 2px solid #fff; }
+        .btn-block { width: 80px; height: 45px; border-radius: 12px; background: rgba(50,50,50,0.8); color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; box-shadow: 0 4px 0 #111; border: 2px solid #555; transition: 0.1s; }
+        .btn-block:active { transform: translateY(4px); box-shadow: 0 0 0 #111; background: var(--c-main); color: #000; border-color: #fff; }
+
+        .btn-group { position: absolute; bottom: 30px; right: 40px; width: 160px; height: 160px; pointer-events: auto; touch-action: none; }
+        .btn-act { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid; user-select: none; text-shadow: 1px 1px 2px #000; }
+        .btn-act:active { transform: translateY(4px) scale(0.95); box-shadow: 0 0 15px; }
+        
+        #btn-a { bottom: 0; right: 0; background: rgba(255,0,85,0.6); border-color: #ff0055; width: 75px; height: 75px; font-size: 22px; } 
+        #btn-b { bottom: 85px; right: 65px; background: rgba(0,255,170,0.6); border-color: #00ffaa; width: 60px; height: 60px; font-size: 16px; } 
+        #btn-c { bottom: 15px; right: 95px; background: rgba(255,170,0,0.6); border-color: #ffaa00; width: 60px; height: 60px; font-size: 16px; } 
+        #btn-s { bottom: 110px; right: 0px; background: rgba(0,170,255,0.6); border-color: #00aaff; width: 60px; height: 60px; font-size: 16px; } 
+
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 200; pointer-events: auto; backdrop-filter: blur(5px); }
+        .overlay-msg { font-size: 70px; color: var(--c-main); text-shadow: 4px 4px 0 #000, 0 0 20px var(--c-main); transform: scale(0); animation: stamp 0.4s forwards; margin-bottom: 30px; font-style: italic; }
+        @keyframes stamp { to { transform: scale(1); } }
+    </style>
+    <script type="importmap"> { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.webgpu.js" } } </script>
+</head>
+<body>
+    <div class="top-bar"><button id="btn-fs">Fullscreen</button></div>
+    <div id="canvas-container"></div>
+
+    <div id="start-screen">
+        <div class="logo">NEON SLUMS 4.0</div>
+        <div class="roster">
+            <div class="char-card active" data-type="0">
+                <div class="char-icon" style="background: linear-gradient(135deg, #00ffff, #0055ff);"></div>
+                <h3>BRAWLER</h3>
+                <div class="char-stats">SPD: ★★★☆☆<br>ATK: ★★★☆☆<br>Combo Master</div>
+            </div>
+            <div class="char-card" data-type="1">
+                <div class="char-icon" style="background: linear-gradient(135deg, #ff0055, #550000);"></div>
+                <h3>BOXER</h3>
+                <div class="char-stats">SPD: ★★☆☆☆<br>ATK: ★★★★★<br>Heavy Hitter</div>
+            </div>
+            <div class="char-card" data-type="2">
+                <div class="char-icon" style="background: linear-gradient(135deg, #00ffaa, #005522);"></div>
+                <h3>RONIN</h3>
+                <div class="char-stats">SPD: ★★★★☆<br>ATK: ★★★☆☆<br>Long Reach</div>
+            </div>
+        </div>
+        <button class="btn-start" id="start-btn">ENGAGE</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="player-info">
+                <div class="p-name">P1 <span id="p1-name"></span></div>
+                <div class="hp-bar"><div id="hp-player" class="hp-fill"></div></div>
+            </div>
+            <div class="player-info enemy-info">
+                <div class="p-name">AI ENEMY</div>
+                <div class="hp-bar"><div id="hp-enemy" class="hp-fill"></div></div>
+            </div>
+        </div>
+        <div id="combo-txt" class="combo-counter">2 HITS!</div>
+        
+        <div id="dir-zone">
+            <div id="slider-track"><div id="slider-knob"></div></div>
+            <div id="btn-d" class="btn-block">BLOCK</div>
+        </div>
+        <div class="btn-group">
+            <div id="btn-a" class="btn-act" style="color:#ff0055">ATK</div>
+            <div id="btn-b" class="btn-act" style="color:#00ffaa">JMP</div>
+            <div id="btn-c" class="btn-act" style="color:#ffaa00">DSH</div>
+            <div id="btn-s" class="btn-act" style="color:#00aaff">SKL</div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="overlay-txt" class="overlay-msg">KO!</div>
+        <button class="btn-start" id="restart-btn" style="padding:15px 40px;">REMATCH</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // 引擎常量
+        const CFG = { g: -60, floorY: 0, dodgeSpeed: 30 };
+        const ST = { IDLE:0, WALK:1, JUMP:2, FALL:3, ATK1:4, ATK2:5, ATK3:6, DASH:7, SKILL:8, BLOCK:9, HURT:10, DEAD:11, WIN:12, JUMP_ATK:13, DASH_ATK:14 };
+        const haptic = (ms) => { if (navigator.vibrate) navigator.vibrate(ms); };
+
+        // [1] 打击音效引擎
+        class AudioEngine {
+            constructor() { this.ctx = null; this.master = null; }
+            init() {
+                if (this.ctx && this.ctx.state === 'running') return;
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.master = this.ctx.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ctx.destination);
+            }
+            play(freq, type, dur, vol, slide=null) {
+                if(!this.ctx || this.ctx.state !== 'running') return;
+                const t = this.ctx.currentTime, osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.type = type; osc.connect(gain); gain.connect(this.master);
+                osc.frequency.setValueAtTime(freq, t); if(slide) osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
+                gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+                osc.start(t); osc.stop(t + dur);
+            }
+            sfxHitLight() { this.play(300, 'square', 0.1, 0.4, 100); haptic(20); }
+            sfxHitHeavy() { this.play(150, 'sawtooth', 0.2, 0.7, 50); haptic(50); }
+            sfxBlock() { this.play(800, 'sine', 0.1, 0.5, 1200); haptic(10); }
+            sfxSwing() { this.play(200, 'sine', 0.12, 0.3, 100); }
+            sfxSlash() { this.play(1000, 'sawtooth', 0.1, 0.2, 500); }
+            sfxDash() { this.play(120, 'sawtooth', 0.15, 0.2, 40); }
+            sfxShoot() { this.play(600, 'square', 0.2, 0.4, 150); }
+            sfxKO() { this.play(100, 'sawtooth', 1.5, 0.8, 20); haptic(200); }
+        }
+        const audio = new AudioEngine();
+
+        // [2] 粒子与特效
+        class VFXEngine {
+            constructor(scene) {
+                this.scene = scene; this.particles =[]; this.texts =[]; this.trails =[];
+                this.fontCanvas = document.createElement('canvas'); this.fontCtx = this.fontCanvas.getContext('2d', { willReadFrequently: true });
+                this.boxGeom = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            }
+            spawnSparks(pos, color, count=15) {
+                const mat = new THREE.MeshBasicMaterial({ color: color });
+                for(let i=0; i<count; i++) {
+                    const m = new THREE.Mesh(this.boxGeom, mat); m.position.copy(pos); this.scene.add(m);
+                    this.particles.push({ m, life: 1.0, vx:(Math.random()-0.5)*30, vy:Math.random()*25+10, vz:(Math.random()-0.5)*30, mat });
+                }
+            }
+            // 用于打断连招时的环形爆气
+            spawnBurst(pos, color) {
+                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, wireframe: true });
+                const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 8, 16), mat);
+                m.position.copy(pos); m.position.y += 1.5; m.rotation.x = Math.PI/2;
+                this.scene.add(m); this.trails.push({ m, life: 0.3, isBurst: true });
+            }
+            spawnTrail(mesh, color) {
+                const clone = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending }));
+                mesh.getWorldPosition(clone.position); mesh.getWorldQuaternion(clone.quaternion); clone.scale.copy(mesh.scale);
+                this.scene.add(clone); this.trails.push({ m: clone, life: 0.2, isBurst: false });
+            }
+            spawnText(pos, txt, color="#ff0055", isCrit=false) {
+                this.fontCanvas.width = 256; this.fontCanvas.height = 128; this.fontCtx.clearRect(0,0,256,128);
+                this.fontCtx.fillStyle = color; this.fontCtx.font = `900 ${isCrit?60:45}px Impact`;
+                this.fontCtx.textAlign = "center"; this.fontCtx.shadowColor = "#fff"; this.fontCtx.shadowBlur = 4;
+                this.fontCtx.fillText(txt, 128, 80);
+                const tex = new THREE.CanvasTexture(this.fontCanvas); const mat = new THREE.SpriteMaterial({ map: tex });
+                const sprite = new THREE.Sprite(mat); sprite.position.copy(pos); sprite.position.y += 2.5 + Math.random(); sprite.position.x += (Math.random()-0.5);
+                sprite.scale.set(4, 2, 1); this.scene.add(sprite); this.texts.push({ m: sprite, life: 1.0, vy: 5, mat, tex });
+            }
+            update(dt) {
+                for (let i = this.particles.length-1; i>=0; i--) {
+                    let p = this.particles[i]; p.life -= dt * 3;
+                    if(p.life <= 0){ this.scene.remove(p.m); if(i===0 || p.mat!==this.particles[i-1]?.mat) p.mat.dispose(); this.particles.splice(i,1); } 
+                    else { p.vy += CFG.g * dt; p.m.position.set(p.m.position.x + p.vx*dt, p.m.position.y + p.vy*dt, p.m.position.z + p.vz*dt); p.m.scale.setScalar(p.life); }
+                }
+                for (let i = this.texts.length-1; i>=0; i--) {
+                    let t = this.texts[i]; t.life -= dt;
+                    if(t.life <= 0){ this.scene.remove(t.m); t.tex.dispose(); t.mat.dispose(); this.texts.splice(i,1); } 
+                    else { t.m.position.y += t.vy * dt; t.m.material.opacity = t.life; }
+                }
+                for (let i = this.trails.length-1; i>=0; i--) {
+                    let t = this.trails[i]; t.life -= dt;
+                    if(t.life <= 0){ this.scene.remove(t.m); t.m.material.dispose(); this.trails.splice(i,1); } 
+                    else { 
+                        if(t.isBurst) { t.m.scale.addScalar(dt*15); t.m.material.opacity = (t.life/0.3); }
+                        else { t.m.material.opacity = (t.life / 0.2) * 0.5; t.m.scale.multiplyScalar(0.8); }
+                    }
+                }
+            }
+        }
+
+        //[3] KOF 繁杂黑街场景生成 (Cyber-Slum)
+        function buildEnvironment(scene) {
+            scene.background = new THREE.Color(0x110515); // 暗紫夜空
+            scene.fog = new THREE.FogExp2(0x110515, 0.02);
+
+            // 灯光氛围：冷色环境，暖色点光源
+            scene.add(new THREE.AmbientLight(0x222233, 1.5));
+            const rim = new THREE.DirectionalLight(0x00ffff, 2); rim.position.set(-10, 20, -10); scene.add(rim);
+            const fill = new THREE.DirectionalLight(0xff0055, 1.5); fill.position.set(10, 10, 10); scene.add(fill);
+
+            // 格斗舞台 (厚实的水泥板)
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(200, 2, 30), floorMat);
+            floor.position.y = -1; scene.add(floor);
+            
+            // 舞台地线
+            const grid = new THREE.GridHelper(200, 40, 0x555555, 0x333333); grid.position.y = 0.02; scene.add(grid);
+
+            // 背景层1：铁丝网 / 隔离墙
+            const fenceMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.15 });
+            const fence = new THREE.Mesh(new THREE.PlaneGeometry(200, 20, 100, 10), fenceMat);
+            fence.position.set(0, 10, -12); scene.add(fence);
+
+            // 背景层2：丰富的杂物、管道与建筑体素
+            const propGeo = new THREE.BoxGeometry(1,1,1);
+            const propMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+            const props = new THREE.InstancedMesh(propGeo, propMat, 150);
+            const mat4 = new THREE.Matrix4();
+            for(let i=0; i<150; i++) {
+                let w, h, d, x, y, z;
+                if(i < 50) { // 远景高楼
+                    w = 5+Math.random()*10; h = 20+Math.random()*40; d = 5+Math.random()*10;
+                    x = (Math.random()-0.5)*200; y = h/2; z = -30 - Math.random()*20;
+                } else if (i < 100) { // 中景墙体和柱子
+                    w = 2+Math.random()*4; h = 5+Math.random()*15; d = 2+Math.random()*4;
+                    x = (Math.random()-0.5)*150; y = h/2; z = -15 - Math.random()*10;
+                } else { // 近景地上的箱子废墟
+                    w = 1+Math.random()*3; h = 1+Math.random()*3; d = 1+Math.random()*3;
+                    x = (Math.random()-0.5)*100; y = h/2; z = -8 - Math.random()*3;
+                }
+                mat4.makeTranslation(x, y, z); mat4.scale(new THREE.Vector3(w,h,d)); props.setMatrixAt(i, mat4);
+            }
+            scene.add(props);
+
+            // 背景层3：程序化生成的巨大霓虹灯牌 CanvasTexture
+            const signCanvas = document.createElement('canvas'); signCanvas.width=512; signCanvas.height=256;
+            const ctx = signCanvas.getContext('2d');
+            ctx.fillStyle = '#050505'; ctx.fillRect(0,0,512,256);
+            ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 10; ctx.strokeRect(10,10,492,236);
+            ctx.font = "80px Impact"; ctx.textAlign = "center";
+            ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 20; ctx.fillStyle = '#00ffff';
+            ctx.fillText("FIGHT CLUB", 256, 100);
+            ctx.shadowColor = '#ff0055'; ctx.fillStyle = '#ff0055'; ctx.font = "italic 60px Arial Black";
+            ctx.fillText("UNDERGROUND", 256, 200);
+            
+            const signMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(signCanvas), transparent: true });
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), signMat);
+            sign.position.set(0, 15, -14); scene.add(sign);
+        }
+
+        // [4] 强化实体系统 (新增空投、连段窗与取消标志)
+        class Character {
+            constructor(isPlayer, typeID) {
+                this.isP = isPlayer; this.type = typeID;
+                this.hp = 100; this.maxHp = 100;
+                this.pos = new THREE.Vector3(isPlayer ? -6 : 6, CFG.floorY, 0);
+                this.vel = new THREE.Vector3(0,0,0);
+                this.face = isPlayer ? 1 : -1;
+                this.state = ST.IDLE; this.stTimer = 0;
+                this.combo = 0; this.comboTimer = 0;
+                this.hitConnected = false; this.isInvincible = false;
+                this.airDashes = 0; // 记录空中闪避次数
+                
+                this.stats = { spd:[16, 12, 18][typeID], jmp:[24, 20, 26][typeID], atkRanges: [[2.2, 2.2],[1.8, 1.8],[3.5, 4.0]][typeID], dmgMuls:[1.0, 1.6, 1.2][typeID] };
+                this._buildRig();
+            }
+
+            _buildRig() {
+                this.root = new THREE.Group(); const skinColor = 0xffe0bd;
+                const makeNode = (p) => { const g = new THREE.Group(); g.position.copy(p); return g; };
+                const makeBox = (p, w,h,d, col, offY=0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshLambertMaterial({color:col})); m.position.set(0, offY, 0); m.castShadow = m.receiveShadow = true; p.add(m); return m; };
+
+                this.body = makeNode(new THREE.Vector3(0, 1.5, 0)); this.root.add(this.body);
+                this.head = makeNode(new THREE.Vector3(0, 0.8, 0)); this.body.add(this.head); makeBox(this.head, 0.6,0.6,0.6, skinColor, 0.3);
+                this.armL = makeNode(new THREE.Vector3(-0.7, 0.6, 0)); this.body.add(this.armL);
+                this.armR = makeNode(new THREE.Vector3(0.7, 0.6, 0)); this.body.add(this.armR);
+                this.legL = makeNode(new THREE.Vector3(-0.3, -0.7, 0)); this.body.add(this.legL);
+                this.legR = makeNode(new THREE.Vector3(0.3, -0.7, 0)); this.body.add(this.legR);
+
+                if(this.type === 0) { // Brawler
+                    makeBox(this.body, 1.0, 1.4, 0.6, 0x00ffff); makeBox(this.head, 0.65, 0.1, 0.65, 0x222222, 0.5);
+                    makeBox(this.armL, 0.35, 1.1, 0.35, skinColor, -0.5); makeBox(this.armR, 0.35, 1.1, 0.35, skinColor, -0.5);
+                    makeBox(this.legL, 0.4, 1.2, 0.4, 0x333333, -0.6); makeBox(this.legR, 0.4, 1.2, 0.4, 0x333333, -0.6);
+                } else if(this.type === 1) { // Boxer
+                    makeBox(this.body, 1.3, 1.3, 0.8, skinColor); makeBox(this.body, 1.35, 0.4, 0.85, 0x111111, -0.5);
+                    makeBox(this.armL, 0.4, 0.8, 0.4, skinColor, -0.4); makeBox(this.armR, 0.4, 0.8, 0.4, skinColor, -0.4);
+                    makeBox(this.armL, 0.8, 0.8, 0.8, 0xff0055, -1.0); makeBox(this.armR, 0.8, 0.8, 0.8, 0xff0055, -1.0);
+                    makeBox(this.legL, 0.45, 1.1, 0.45, skinColor, -0.5); makeBox(this.legR, 0.45, 1.1, 0.45, skinColor, -0.5);
+                } else { // Ronin
+                    makeBox(this.body, 0.9, 1.4, 0.5, 0x334455); makeBox(this.head, 1.5, 0.1, 1.5, 0x111111, 0.6);
+                    makeBox(this.armL, 0.3, 1.1, 0.3, 0x222222, -0.5); makeBox(this.armR, 0.3, 1.1, 0.3, 0x222222, -0.5);
+                    makeBox(this.legL, 0.4, 1.1, 0.4, 0x111111, -0.5); makeBox(this.legR, 0.4, 1.1, 0.4, 0x111111, -0.5);
+                    this.weapon = makeBox(this.armR, 0.1, 3.2, 0.2, 0x00ffaa, -1.8); this.weapon.rotation.x = Math.PI/4;
+                }
+                this.mats =[]; this.root.traverse(c => { if(c.isMesh) this.mats.push(c.material); });
+            }
+
+            getHurtBox() { return new THREE.Box3(new THREE.Vector3(this.pos.x - 0.7, this.pos.y, -1.0), new THREE.Vector3(this.pos.x + 0.7, this.pos.y + 2.8, 1.0)); }
+            getHitBox(isHeavy) {
+                const w = this.stats.atkRanges[isHeavy?1:0];
+                return new THREE.Box3(new THREE.Vector3(this.face>0?this.pos.x:this.pos.x-w, this.pos.y+0.2, -1.5), new THREE.Vector3(this.face>0?this.pos.x+w:this.pos.x, this.pos.y+2.5, 1.5));
+            }
+
+            changeState(st) {
+                if([ST.DEAD, ST.WIN].includes(this.state)) return;
+                this.state = st; this.stTimer = 0; this.hitConnected = false; this.isInvincible = false;
+                
+                this.body.rotation.set(0,0,0); this.head.rotation.set(0,0,0);
+                this.armL.rotation.set(0,0,0); this.armR.rotation.set(0,0,0);
+                this.legL.rotation.set(0,0,0); this.legR.rotation.set(0,0,0);
+                this.mats.forEach(m => { m.opacity=1; m.transparent=false; });
+
+                if(st === ST.DASH) { this.isInvincible = true; this.vel.x = this.face * CFG.dodgeSpeed; this.mats.forEach(m=>{m.opacity=0.4; m.transparent=true;}); }
+                if(st === ST.BLOCK || st === ST.SKILL) { this.vel.x = 0; }
+            }
+
+            takeDamage(dmg, dirX, isHeavy, vfx) {
+                if(this.isInvincible || this.state === ST.DEAD) return false;
+                if(this.state === ST.BLOCK && dirX !== this.face) {
+                    this.hp -= dmg * 0.1; vfx.spawnSparks(new THREE.Vector3(this.pos.x + this.face, this.pos.y+1.5, 0), 0x00ffff, 8);
+                    audio.sfxBlock(); this.vel.x = dirX * 5; return true;
+                }
+                this.hp -= dmg; audio[isHeavy?'sfxHitHeavy':'sfxHitLight']();
+                vfx.spawnSparks(new THREE.Vector3(this.pos.x, this.pos.y+1.5, 0), isHeavy?0xff0055:0xffaa00, isHeavy?25:12);
+                vfx.spawnText(new THREE.Vector3(this.pos.x, this.pos.y+2, 0), Math.floor(dmg), isHeavy?"#ff0055":"#ffaa00", isHeavy);
+
+                this.vel.x = dirX * (isHeavy ? 18 : 8); this.vel.y = isHeavy ? 10 : 3;
+                this.mats.forEach(m => { if(m.emissive) m.emissive.setHex(0xffffff); }); setTimeout(() => { if(this.mats) this.mats.forEach(m => { if(m.emissive) m.emissive.setHex(0x000000); }); }, 80);
+                if(this.hp <= 0) { this.hp = 0; this.changeState(ST.DEAD); } else this.changeState(ST.HURT);
+                return true;
+            }
+
+            update(dt, opp, vfx, scene) {
+                if(this.state === ST.DEAD || this.state === ST.WIN) { this._animate(dt); this.root.position.copy(this.pos); return; }
+
+                this.stTimer += dt;
+                if(this.comboTimer > 0) this.comboTimer -= dt; else this.combo = 0;
+                let onGnd = this.pos.y <= CFG.floorY + 0.05;
+
+                if(onGnd) this.airDashes = 0; // 落地重置空闪次数
+
+                // 物理重力 (空中闪避期间滞空)
+                if(!onGnd) {
+                    if (this.state === ST.DASH) this.vel.y = 0; // 空闪无重力
+                    else this.vel.y += CFG.g * dt;
+                } else if(this.vel.y < 0) { 
+                    this.vel.y = 0; this.pos.y = CFG.floorY; 
+                    if([ST.FALL, ST.HURT, ST.JUMP_ATK].includes(this.state)) this.changeState(ST.IDLE); 
+                }
+                
+                // 地面摩擦力
+                if(onGnd && ![ST.WALK, ST.DASH, ST.DASH_ATK].includes(this.state)) this.vel.x *= 0.6;
+                
+                // 攻击判定
+                if([ST.ATK1, ST.ATK2, ST.ATK3, ST.JUMP_ATK, ST.DASH_ATK].includes(this.state)) {
+                    let isHeavy = this.state === ST.ATK3 || this.state === ST.JUMP_ATK;
+                    let isDashAtk = this.state === ST.DASH_ATK;
+                    
+                    if(onGnd && this.stTimer < 0.1 && !isDashAtk) this.vel.x = this.face * (isHeavy?10:4);
+                    if(isDashAtk && this.stTimer < 0.25) this.vel.x = this.face * 22;
+
+                    let activeStart = isHeavy ? 0.2 : (isDashAtk ? 0.1 : 0.1);
+                    let activeEnd = isHeavy ? 0.4 : (isDashAtk ? 0.3 : 0.2);
+
+                    if(this.stTimer >= activeStart && this.stTimer <= activeEnd) {
+                        if(this.type === 2 && this.stTimer < activeStart+0.05) vfx.spawnTrail(this.weapon, 0x00ffaa);
+                        if(!this.hitConnected) {
+                            if(this.getHitBox(isHeavy || isDashAtk).intersectsBox(opp.getHurtBox())) {
+                                if(opp.takeDamage((isHeavy?18:10) * this.stats.dmgMuls, this.face, isHeavy, vfx)) {
+                                    this.hitConnected = true;
+                                    if(this.isP) { this.combo++; this.comboTimer = 2.0; let cTxt = document.getElementById('combo-txt'); if(this.combo > 1) { cTxt.innerText = `${this.combo} HITS!`; cTxt.style.opacity = 1; setTimeout(()=>cTxt.style.opacity=0, 1500); } }
+                                    window.gameHitStop = isHeavy ? 0.15 : 0.08; window.gameCamShake = isHeavy ? 0.8 : 0.3;
+                                }
+                            }
+                        }
+                    }
+                    // 自动收招逻辑（现在可以被提早Cancel）
+                    if(onGnd && this.state !== ST.JUMP_ATK && this.stTimer > (isHeavy?0.6:0.4)) this.changeState(ST.IDLE);
+                }
+
+                if(this.state === ST.DASH && this.stTimer > 0.3) this.changeState(onGnd ? ST.IDLE : ST.FALL);
+                if(this.state === ST.HURT && this.stTimer > 0.4 && onGnd) this.changeState(ST.IDLE);
+                if(this.state === ST.SKILL) {
+                    if(this.stTimer > 0.2 && !this.hitConnected) {
+                        this.hitConnected = true; audio.sfxShoot();
+                        const projMat = new THREE.MeshBasicMaterial({ color: this.type===1?0xff0055:0x00aaff, wireframe: true });
+                        const proj = new THREE.Mesh(new THREE.IcosahedronGeometry(0.8, 1), projMat);
+                        proj.position.set(this.pos.x + this.face*2, this.pos.y + 1.5, 0); scene.add(proj);
+                        window.sysProjectiles.push({ m: proj, vx: this.face * 35, owner: this, life: 1.5, mat: projMat });
+                    }
+                    if(this.stTimer > 0.6) this.changeState(ST.IDLE);
+                }
+
+                this.pos.addScaledVector(this.vel, dt);
+                this.pos.x = Math.max(-25, Math.min(25, this.pos.x));
+                
+                if(opp.state !== ST.DEAD && this.state !== ST.DASH && opp.state !== ST.DASH) {
+                    let dx = opp.pos.x - this.pos.x; let dy = Math.abs(opp.pos.y - this.pos.y);
+                    if(Math.abs(dx) < 1.4 && dy < 1.8) this.pos.x = opp.pos.x - Math.sign(dx)*1.4;
+                }
+
+                this.root.position.copy(this.pos);
+                this.root.rotation.y = THREE.MathUtils.lerp(this.root.rotation.y, this.face>0 ? Math.PI/2 : -Math.PI/2, 0.4);
+                this._animate(dt);
+            }
+
+            _animate(dt) {
+                const t = this.stTimer; const pi = Math.PI;
+                switch(this.state) {
+                    case ST.IDLE:
+                        this.body.position.y = 1.5 + Math.sin(t*5)*0.06;
+                        this.armL.rotation.x = Math.sin(t*2)*0.1; this.armR.rotation.x = this.type===2 ? 0.5 : Math.sin(t*2+pi)*0.1;
+                        break;
+                    case ST.WALK:
+                        this.body.position.y = 1.5 + Math.abs(Math.sin(t*18))*0.15;
+                        this.armL.rotation.x = Math.sin(t*15)*1.2; this.armR.rotation.x = this.type===2 ? 0.5 : -Math.sin(t*15)*1.2;
+                        this.legL.rotation.x = -Math.sin(t*15)*1.2; this.legR.rotation.x = Math.sin(t*15)*1.2;
+                        break;
+                    case ST.JUMP: case ST.FALL:
+                        this.legL.rotation.x = 0.5; this.legR.rotation.x = -0.2; this.armL.rotation.x = 0.8; this.armR.rotation.x = -0.8;
+                        break;
+                    case ST.ATK1: case ST.ATK2: 
+                        let isLeft = this.state === ST.ATK1; let arm = isLeft ? this.armL : this.armR;
+                        if(this.type === 2) { if(t<0.1) { this.armR.rotation.x = -t*30; this.body.rotation.x = 0.3; } else { this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, 0, 0.3); this.body.rotation.x = 0; } } 
+                        else { if(t<0.1) { arm.rotation.x = -t*25; this.body.rotation.y = isLeft?0.6:-0.6; } else { arm.rotation.x = THREE.MathUtils.lerp(arm.rotation.x, 0, 0.4); this.body.rotation.y = 0; } }
+                        break;
+                    case ST.ATK3: 
+                        if(this.type === 2) { if(t<0.2) { this.armR.rotation.x = 2.5; this.body.rotation.x = -0.4; } else if(t<0.3) { this.armR.rotation.x = -2.8; this.body.rotation.x = 0.6; } else { this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, 0, 0.2); this.body.rotation.x = 0; } } 
+                        else { if(t<0.2) { this.armR.rotation.x = 1.0; this.body.position.y = 1.0; } else if(t<0.3) { this.armR.rotation.x = -3.5; this.body.position.y = 2.2; } else { this.armR.rotation.x = THREE.MathUtils.lerp(this.armR.rotation.x, 0, 0.2); this.body.position.y = 1.5; } }
+                        break;
+                    case ST.JUMP_ATK: 
+                        this.legL.rotation.x = -0.5; this.legR.rotation.x = 0.5; this.armR.rotation.x = -3.0; this.body.rotation.x = 0.5; break;
+                    case ST.DASH_ATK: 
+                        this.body.rotation.x = 0.8; this.armR.rotation.x = -1.8; this.armL.rotation.x = 1.0; this.legL.rotation.x = -0.8; this.legR.rotation.x = 0.5; break;
+                    case ST.BLOCK:
+                        this.armL.rotation.x = -1.8; this.armR.rotation.x = -1.8; this.armL.rotation.z = 0.6; this.armR.rotation.z = -0.6; this.body.rotation.x = 0.3; break;
+                    case ST.DASH:
+                        this.body.rotation.x = 0.7; this.armL.rotation.x = 1.2; this.armR.rotation.x = 1.2; this.head.rotation.x = -0.6; break;
+                    case ST.SKILL:
+                        if(t<0.2) { this.armL.rotation.x = 2.5; this.armR.rotation.x = 2.5; } else { this.armL.rotation.x = -1.5; this.armR.rotation.x = -1.5; } break;
+                    case ST.HURT:
+                        this.body.rotation.x = -0.8; this.head.rotation.x = 0.5; this.armL.rotation.x = -0.5; this.armR.rotation.x = -0.5; break;
+                    case ST.DEAD:
+                        this.body.rotation.x = -pi/2; this.body.position.y = 0.6; this.legL.rotation.x = 0; this.legR.rotation.x = 0; break;
+                    case ST.WIN:
+                        this.body.rotation.x = 0; this.armL.rotation.z = 3.0; this.armR.rotation.z = -3.0; this.head.rotation.x = Math.sin(t*12)*0.15; break;
+                }
+            }
+        }
+
+        // [5] 操作指令派发：包含全新的动作打断与普攻衔接逻辑！
+        function processPlayerLogic() {
+            if(!p1 || appState !== 'PLAY' || p1.state === ST.DEAD) return;
+            let onGnd = p1.pos.y <= CFG.floorY + 0.1;
+
+            // 1. 最高优先级：闪避打断 (Dash Cancel)
+            if (input.c) {
+                let isAtk = p1.state >= ST.ATK1 && p1.state <= ST.DASH_ATK;
+                if (onGnd) {
+                    // 可以打断地面攻击、防御、技能
+                    if (isAtk || p1.state === ST.BLOCK || p1.state === ST.SKILL ||[ST.IDLE,ST.WALK].includes(p1.state)) {
+                        if ((isAtk || p1.state === ST.SKILL) && p1.stTimer > 0.05) {
+                            vfx.spawnBurst(p1.pos, 0x00ffff); // 强制打断爆发特效！
+                        }
+                        p1.changeState(ST.DASH); audio.sfxDash();
+                    }
+                } else if (!onGnd && p1.airDashes < 1) { // 空中闪避
+                    p1.airDashes++; p1.changeState(ST.DASH); p1.vel.y = 0; // 悬停滞空
+                    vfx.spawnBurst(p1.pos, 0xffffff); audio.sfxDash();
+                }
+                input.c = false;
+            }
+
+            // 2. 防御拦截 (不可同时移动)
+            if (input.d && onGnd && ![ST.DASH, ST.SKILL, ST.ATK1, ST.ATK2, ST.ATK3, ST.DASH_ATK].includes(p1.state)) {
+                if(p1.state !== ST.BLOCK) p1.changeState(ST.BLOCK);
+                return; 
+            } else if (p1.state === ST.BLOCK && (!input.d || !onGnd)) {
+                p1.changeState(ST.IDLE);
+            }
+
+            // 3. 常规动作与连招系统
+            if([ST.IDLE, ST.WALK, ST.JUMP, ST.FALL].includes(p1.state)) {
+                if(input.x !== 0) {
+                    p1.vel.x = input.x * p1.stats.spd; p1.face = input.x;
+                    if(onGnd && p1.state !== ST.WALK) p1.changeState(ST.WALK);
+                } else if(onGnd && p1.state === ST.WALK) p1.changeState(ST.IDLE);
+
+                if(input.b && onGnd) { p1.vel.y = p1.stats.jmp; p1.changeState(ST.JUMP); audio.play(400,'sine',0.3,0.2,800); input.b=false; }
+                if(input.s && onGnd) { p1.changeState(ST.SKILL); input.s=false; }
+                
+                // 起手攻击
+                if(input.a) { 
+                    if (onGnd) p1.changeState(ST.ATK1); else p1.changeState(ST.JUMP_ATK);
+                    audio[p1.type===2?'sfxSlash':'sfxSwing'](); input.a=false; 
+                }
+            } else {
+                // 【核心新机制】：攻击连招流转 (Combo Chains)
+                if (input.a && onGnd) {
+                    if (p1.state === ST.DASH) {
+                        p1.changeState(ST.DASH_ATK); audio[p1.type===2?'sfxSlash':'sfxSwing'](); input.a=false;
+                    } else if (p1.state === ST.ATK1 && p1.stTimer > 0.15) { // 挥出后即可衔接下一段，无需等收招
+                        p1.changeState(ST.ATK2); audio[p1.type===2?'sfxSlash':'sfxSwing'](); input.a=false;
+                    } else if (p1.state === ST.ATK2 && p1.stTimer > 0.15) {
+                        p1.changeState(ST.ATK3); audio[p1.type===2?'sfxSlash':'sfxSwing'](); input.a=false;
+                    }
+                }
+                // 攻击可以接技能
+                if (input.s && onGnd && (p1.state === ST.ATK1 || p1.state === ST.ATK2) && p1.stTimer > 0.15) {
+                    p1.changeState(ST.SKILL); input.s=false;
+                }
+            }
+        }
+
+        //[6] AI 控制器适配
+        class AIController {
+            constructor() { this.thinkTimer = 0; }
+            update(dt, ai, opp) {
+                if(ai.state === ST.DEAD || opp.state === ST.DEAD) return;
+                if(ai.state === ST.BLOCK) { this.thinkTimer -= dt; if(this.thinkTimer <= 0) ai.changeState(ST.IDLE); return; }
+                let onGnd = ai.pos.y <= CFG.floorY + 0.1;
+                
+                // AI 也会连招了！
+                if (ai.state === ST.ATK1 && ai.stTimer > 0.15 && Math.random() < 0.6) { ai.changeState(ST.ATK2); return; }
+                if (ai.state === ST.ATK2 && ai.stTimer > 0.15 && Math.random() < 0.4) { ai.changeState(ST.ATK3); return; }
+
+                if(![ST.IDLE, ST.WALK].includes(ai.state)) return; 
+                this.thinkTimer -= dt; if(this.thinkTimer > 0) return;
+
+                let dist = Math.abs(ai.pos.x - opp.pos.x);
+                let isOppAttacking =[ST.ATK1, ST.ATK2, ST.ATK3, ST.SKILL, ST.JUMP_ATK, ST.DASH_ATK].includes(opp.state);
+                ai.face = opp.pos.x > ai.pos.x ? 1 : -1;
+
+                if (isOppAttacking && dist < ai.stats.atkRanges[0] * 2.0 && onGnd) {
+                    if (Math.random() < 0.5) { ai.changeState(ST.BLOCK); this.thinkTimer = 0.5; return; }
+                    if (Math.random() < 0.3) { ai.changeState(ST.DASH); ai.face = -ai.face; ai.vel.x = ai.face * CFG.dodgeSpeed; this.thinkTimer = 0.5; return; }
+                }
+
+                if (dist > ai.stats.atkRanges[0] * 1.2) {
+                    ai.vel.x = ai.face * (ai.stats.spd * 0.7); if (onGnd && ai.state !== ST.WALK) ai.changeState(ST.WALK);
+                    this.thinkTimer = 0.2;
+                } else if (onGnd) {
+                    ai.vel.x = 0; let r = Math.random();
+                    if (r < 0.4) { ai.changeState(ST.ATK1); audio[ai.type===2?'sfxSlash':'sfxSwing'](); }
+                    else if (r < 0.6 && ai.type !== 1) { ai.changeState(ST.SKILL); }
+                    else ai.changeState(ST.IDLE);
+                    this.thinkTimer = 0.3;
+                }
+            }
+        }
+
+        // [7] 系统初始化与渲染循环
+        let scene, camera, renderer, vfx;
+        let p1, p2, aiLogic = new AIController();
+        let lastT = performance.now();
+        let appState = 'MENU'; 
+        let input = { x: 0, a: false, b: false, c: false, s: false, d: false };
+        window.sysProjectiles =[]; window.gameHitStop = 0; window.gameCamShake = 0;
+
+        async function init() {
+            const canvasBox = document.getElementById('canvas-container');
+            renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
+            canvasBox.appendChild(renderer.domElement);
+            await renderer.init();
+
+            scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+            vfx = new VFXEngine(scene); buildEnvironment(scene);
+
+            setupInput();
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+            requestAnimationFrame(mainLoop);
+        }
+
+        function setupInput() {
+            document.getElementById('btn-fs').onclick = () => { if(!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(e=>e); screen.orientation?.lock('landscape').catch(e=>e); } else document.exitFullscreen(); };
+
+            let selType = 0;
+            document.querySelectorAll('.char-card').forEach(c => { c.onclick = () => { document.querySelectorAll('.char-card').forEach(x=>x.classList.remove('active')); c.classList.add('active'); selType = parseInt(c.dataset.type); }; });
+
+            const startGameFlow = () => {
+                audio.init(); document.getElementById('start-screen').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; document.getElementById('ui-layer').style.display = 'block';
+                document.getElementById('p1-name').innerText =["BRAWLER", "BOXER", "RONIN"][selType];
+                if(p1) scene.remove(p1.root); if(p2) scene.remove(p2.root); window.sysProjectiles.forEach(p=>{ scene.remove(p.m); p.mat.dispose(); }); window.sysProjectiles =[];
+                p1 = new Character(true, selType); scene.add(p1.root); p2 = new Character(false, Math.floor(Math.random()*3)); scene.add(p2.root);
+                appState = 'PLAY'; updateHUD();
+            };
+            document.getElementById('start-btn').onclick = startGameFlow;
+            document.getElementById('restart-btn').onclick = () => { appState = 'MENU'; document.getElementById('overlay').style.display = 'none'; document.getElementById('ui-layer').style.display = 'none'; document.getElementById('start-screen').style.display = 'flex'; };
+
+            const bindBtn = (id, key) => {
+                const el = document.getElementById(id);
+                el.addEventListener('touchstart', e=>{ e.preventDefault(); input[key] = true; }, {passive:false}); 
+                el.addEventListener('touchend', e=>{ e.preventDefault(); input[key] = false; }, {passive:false});
+                el.addEventListener('mousedown', e=>{ e.preventDefault(); input[key] = true; }); 
+                el.addEventListener('mouseup', e=>{ e.preventDefault(); input[key] = false; }); 
+                el.addEventListener('contextmenu', e=>e.preventDefault());
+            };
+            bindBtn('btn-a', 'a'); bindBtn('btn-b', 'b'); bindBtn('btn-c', 'c'); bindBtn('btn-s', 's'); bindBtn('btn-d', 'd');
+
+            const track = document.getElementById('slider-track'), knob = document.getElementById('slider-knob');
+            let jAct = false;
+            const updateJoy = (cx) => { let rect = track.getBoundingClientRect(); let max = (rect.width/2)-30; let dx = cx - (rect.left+rect.width/2); dx = Math.max(-max, Math.min(max, dx)); knob.style.transform = `translate(${dx}px, 0)`; input.x = dx > 15 ? 1 : (dx < -15 ? -1 : 0); };
+            track.addEventListener('touchstart', e=>{e.preventDefault(); jAct=true; updateJoy(e.touches[0].clientX);}, {passive:false}); track.addEventListener('touchmove', e=>{e.preventDefault(); if(jAct) updateJoy(e.touches[0].clientX);}, {passive:false}); track.addEventListener('touchend', e=>{e.preventDefault(); jAct=false; knob.style.transform='translate(0,0)'; input.x=0;}, {passive:false});
+            
+            window.addEventListener('keydown', e => { if(e.code==='ArrowLeft'||e.code==='KeyA') input.x = -1; if(e.code==='ArrowRight'||e.code==='KeyD') input.x = 1; if(e.code==='KeyJ') input.a=true; if(e.code==='KeyK') input.b=true; if(e.code==='KeyL') input.c=true; if(e.code==='KeyI') input.s=true; if(e.code==='KeyS'||e.code==='ShiftLeft') input.d=true; });
+            window.addEventListener('keyup', e => { if(['ArrowLeft','KeyA','ArrowRight','KeyD'].includes(e.code)) input.x = 0; if(e.code==='KeyJ') input.a=false; if(e.code==='KeyK') input.b=false; if(e.code==='KeyL') input.c=false; if(e.code==='KeyI') input.s=false; if(e.code==='KeyS'||e.code==='ShiftLeft') input.d=false; });
+        }
+
+        function updateHUD() {
+            if(!p1 || !p2) return;
+            document.getElementById('hp-player').style.width = `${Math.max(0, p1.hp)}%`; document.getElementById('hp-enemy').style.width = `${Math.max(0, p2.hp)}%`;
+            if(appState === 'PLAY' && (p1.hp <= 0 || p2.hp <= 0)) {
+                appState = 'OVER'; setTimeout(() => { document.getElementById('overlay').style.display = 'flex'; document.getElementById('overlay-txt').innerText = p1.hp > 0 ? "YOU WIN!" : "K.O."; audio.sfxKO(); }, 1500);
+            }
+        }
+
+        function mainLoop(time) {
+            requestAnimationFrame(mainLoop);
+            let dt = (time - lastT) / 1000; lastT = time; if(dt > 0.1) dt = 0.1; 
+
+            if(window.gameHitStop > 0) window.gameHitStop -= dt; 
+            else {
+                if(appState === 'PLAY') { processPlayerLogic(); aiLogic.update(dt, p2, p1); p1.update(dt, p2, vfx, scene); p2.update(dt, p1, vfx, scene); updateHUD(); }
+                for(let i = window.sysProjectiles.length-1; i>=0; i--) {
+                    let pr = window.sysProjectiles[i]; pr.m.position.x += pr.vx * dt; pr.m.rotation.y += dt*15; pr.life -= dt;
+                    if(appState === 'PLAY') {
+                        let opp = pr.owner === p1 ? p2 : p1;
+                        if(new THREE.Box3().setFromObject(pr.m).intersectsBox(opp.getHurtBox()) && opp.state !== ST.DEAD) { opp.takeDamage(20, Math.sign(pr.vx), true, vfx); vfx.spawnSparks(pr.m.position, 0x00ffff, 20); pr.life = 0; }
+                    }
+                    if(pr.life <= 0) { scene.remove(pr.m); pr.mat.dispose(); window.sysProjectiles.splice(i,1); }
+                }
+            }
+            vfx.update(dt);
+
+            if(p1 && p2 && appState === 'PLAY') {
+                let midX = Math.max(-12, Math.min(12, (p1.pos.x + p2.pos.x) / 2)); let dist = Math.abs(p1.pos.x - p2.pos.x);
+                let targetZ = Math.max(14, Math.min(26, dist * 0.7 + 12)); let targetY = 3.5 + dist * 0.1; 
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, midX, 0.1); camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.05);
+                if(window.gameCamShake > 0) { camera.position.x += (Math.random()-0.5)*window.gameCamShake*2; camera.position.y = targetY + (Math.random()-0.5)*window.gameCamShake*2; window.gameCamShake -= dt; } else camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.1);
+                camera.lookAt(midX, 2.0, 0); 
+            } else { camera.position.x = Math.sin(time*0.0005)*8; camera.lookAt(0, 3, 0); }
+            renderer.render(scene, camera);
+        }
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"useDefineForClassFields": true,
+		"module": "ESNext",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"skipLibCheck": true,
+		"ignoreDeprecations": "6.0",
+
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"noEmit": true,
+
+		"strict": true,
+		"noFallthroughCasesInSwitch": true,
+
+		"baseUrl": "..",
+		"paths": {
+			"@/*": ["src/*"],
+			"@engine/*": ["src/engine/*"],
+			"@fox-jump/*": ["src/fox-jump/*"],
+			"@game/*": ["src/fox-jump/game/*"],
+			"@render/*": ["src/fox-jump/render/*"],
+			"@ai/*": ["src/fox-jump/ai/*"],
+			"@views/*": ["src/fox-jump/views/*"],
+			"@utils/*": ["src/fox-jump/utils/*"],
+			"@managers/*": ["src/fox-jump/managers/*"]
+		}
+	},
+	"include": ["../src/**/*.ts"],
+	"exclude": ["../src/**/*.test.ts", "../src/causal-ai/cli/**/*"],
+	"references": [{ "path": "./tsconfig.node.json" }]
+}
