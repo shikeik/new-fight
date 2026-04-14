@@ -28,7 +28,6 @@ export default class ErudaIndexedDB {
                 { id: 'store', title: 'Store', weight: 60 },
                 { id: 'objects', title: 'Objects', weight: 20 },
             ],
-            minHeight: 60,
             maxHeight: 223,
         });
 
@@ -64,7 +63,7 @@ export default class ErudaIndexedDB {
 
     private initTemplate(el: HTMLElement): void {
         el.innerHTML = `
-            <h2 class="eruda-title">
+            <h2 class="eruda-title" style="border-top:1px solid #ccc;border-right:1px solid #ccc;border-left:1px solid #ccc;border-bottom:none;">
                 IndexedDB
                 <div class="eruda-btn eruda-refresh-databases">
                     <span class="eruda-icon eruda-icon-refresh"></span>
