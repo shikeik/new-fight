@@ -757,7 +757,12 @@
 
             if(p1 && p2 && appState === 'PLAY') {
                 let midX = Math.max(-12, Math.min(12, (p1.pos.x + p2.pos.x) / 2)); let dist = Math.abs(p1.pos.x - p2.pos.x);
-                let targetZ = Math.max(14, Math.min(26, dist * 0.7 + 12)); let targetY = 3.5 + dist * 0.1; 
+                const aspect = camera.aspect;
+                const bodyWidth = 1.4;
+                const safeRatio = 0.75;
+                const requiredZ = (dist + bodyWidth) / (2 * Math.tan(camera.fov * Math.PI / 360) * aspect * safeRatio);
+                let targetZ = Math.max(12, Math.min(45, requiredZ));
+                let targetY = 3.5 + dist * 0.12; 
                 camera.position.x = THREE.MathUtils.lerp(camera.position.x, midX, 0.1); camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.05);
                 if(window.gameCamShake > 0) { camera.position.x += (Math.random()-0.5)*window.gameCamShake*2; camera.position.y = targetY + (Math.random()-0.5)*window.gameCamShake*2; window.gameCamShake -= dt; } else camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.1);
                 camera.lookAt(midX, 2.0, 0); 
