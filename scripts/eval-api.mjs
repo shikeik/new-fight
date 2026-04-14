@@ -24,7 +24,7 @@ async function main() {
 	if (!code) {
 		console.error("用法: eval-api [-p] 'code'")
 		console.error("       eval-api [-p] <<'EOF'")
-		console.error("       code...")
+		console.error("       代码...")
 		console.error("       EOF")
 		process.exit(1)
 	}

@@ -63,8 +63,8 @@ function sendResult(res: ServerResponse, id: number, result: EvalResult, isPrett
 	if (isPretty) {
 		res.setHeader("Content-Type", "text/plain; charset=utf-8")
 		const prettyResult = result.error
-			? `❌ errorType: ${result.errorType}\n\n${result.error}`
-			: `✅ success: true\nresult: ${typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : result.result}`
+			? `❌ 错误类型: ${result.errorType}\n\n${result.error}`
+			: `✅ 成功: true\n结果: ${typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : result.result}`
 		res.end(`[Request #${id}]\n${prettyResult}\n`)
 	} else {
 		res.setHeader("Content-Type", "application/json; charset=utf-8")
@@ -95,7 +95,7 @@ async function handleEval(
 	executor: (code: string, id: number) => Promise<EvalResult>
 ) {
 	if (req.method !== "POST") {
-		sendJson(res, 405, { success: false, errorType: "method", result: null, error: "Method not allowed" })
+		sendJson(res, 405, { success: false, errorType: "method", result: null, error: "方法不允许" })
 		return
 	}
 
@@ -106,11 +106,11 @@ async function handleEval(
 		const url = new URL(req.url || "", `http://${req.headers.host}`)
 		const pwd = parsePwd(url)
 		if (pwd !== "shikeik666") {
-			sendJson(res, 403, { success: false, errorType: "auth", result: null, error: "Forbidden" })
+			sendJson(res, 403, { success: false, errorType: "auth", result: null, error: "禁止访问" })
 			return
 		}
 		if (!body) {
-			sendJson(res, 400, { success: false, errorType: "input", result: null, error: "Missing code" })
+			sendJson(res, 400, { success: false, errorType: "input", result: null, error: "缺少代码" })
 			return
 		}
 
@@ -134,7 +134,7 @@ export const apiEvalPlugin = {
 					setTimeout(() => {
 						if (pendingRequests.has(id)) {
 							pendingRequests.delete(id)
-							resolve({ success: false, errorType: "timeout", result: null, error: "Timeout waiting for browser response" })
+							resolve({ success: false, errorType: "timeout", result: null, error: "等待浏览器响应超时" })
 						}
 					}, 5000)
 				})

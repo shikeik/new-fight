@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Ultimate Fighter: Underground 4.0</title>
+    <title>终极格斗：地下拳场 4.0</title>
     <style>
         /* ================= KOF 赛博黑街风 UI ================= */
         :root { --c-main: #00ffff; --c-accent: #ff0055; --c-bg: #050508; --c-panel: rgba(10, 15, 25, 0.85); }
@@ -134,25 +134,25 @@
     <div id="canvas-container"></div>
 
     <div id="start-screen">
-        <div class="logo">NEON SLUMS 4.0</div>
+        <div class="logo">霓虹贫民窟 4.0</div>
         <div class="roster">
             <div class="char-card active" data-type="0">
                 <div class="char-icon" style="background: linear-gradient(135deg, #00ffff, #0055ff);"></div>
-                <h3>BRAWLER</h3>
-                <div class="char-stats">SPD: ★★★☆☆<br>ATK: ★★★☆☆<br>Combo Master</div>
+                <h3>格斗家</h3>
+                <div class="char-stats">速度: ★★★☆☆<br>攻击: ★★★☆☆<br>连击大师</div>
             </div>
             <div class="char-card" data-type="1">
                 <div class="char-icon" style="background: linear-gradient(135deg, #ff0055, #550000);"></div>
-                <h3>BOXER</h3>
-                <div class="char-stats">SPD: ★★☆☆☆<br>ATK: ★★★★★<br>Heavy Hitter</div>
+                <h3>拳击手</h3>
+                <div class="char-stats">速度: ★★☆☆☆<br>攻击: ★★★★★<br>重击手</div>
             </div>
             <div class="char-card" data-type="2">
                 <div class="char-icon" style="background: linear-gradient(135deg, #00ffaa, #005522);"></div>
-                <h3>RONIN</h3>
-                <div class="char-stats">SPD: ★★★★☆<br>ATK: ★★★☆☆<br>Long Reach</div>
+                <h3>浪人</h3>
+                <div class="char-stats">速度: ★★★★☆<br>攻击: ★★★☆☆<br>长臂拳</div>
             </div>
         </div>
-        <button class="btn-start" id="start-btn">ENGAGE</button>
+        <button class="btn-start" id="start-btn">开始战斗</button>
     </div>
 
     <div id="ui-layer">
@@ -162,27 +162,27 @@
                 <div class="hp-bar"><div id="hp-player" class="hp-fill"></div></div>
             </div>
             <div class="player-info enemy-info">
-                <div class="p-name">AI ENEMY</div>
+                <div class="p-name">AI 敌人</div>
                 <div class="hp-bar"><div id="hp-enemy" class="hp-fill"></div></div>
             </div>
         </div>
-        <div id="combo-txt" class="combo-counter">2 HITS!</div>
+        <div id="combo-txt" class="combo-counter">2 连击!</div>
         
         <div id="dir-zone">
             <div id="slider-track"><div id="slider-knob"></div></div>
-            <div id="btn-d" class="btn-block">BLOCK</div>
+            <div id="btn-d" class="btn-block">防御</div>
         </div>
         <div class="btn-group">
-            <div id="btn-a" class="btn-act" style="color:#ff0055">ATK</div>
-            <div id="btn-b" class="btn-act" style="color:#00ffaa">JMP</div>
-            <div id="btn-c" class="btn-act" style="color:#ffaa00">DSH</div>
-            <div id="btn-s" class="btn-act" style="color:#00aaff">SKL</div>
+            <div id="btn-a" class="btn-act" style="color:#ff0055">攻击</div>
+            <div id="btn-b" class="btn-act" style="color:#00ffaa">跳跃</div>
+            <div id="btn-c" class="btn-act" style="color:#ffaa00">冲刺</div>
+            <div id="btn-s" class="btn-act" style="color:#00aaff">技能</div>
         </div>
     </div>
 
     <div id="overlay">
-        <div id="overlay-txt" class="overlay-msg">KO!</div>
-        <button class="btn-start" id="restart-btn" style="padding:15px 40px;">REMATCH</button>
+        <div id="overlay-txt" class="overlay-msg">击倒!</div>
+        <button class="btn-start" id="restart-btn" style="padding:15px 40px;">再战</button>
     </div>
 
     <script type="module">
@@ -510,7 +510,7 @@
                             if(this.getHitBox(isHeavy || isDashAtk).intersectsBox(opp.getHurtBox())) {
                                 if(opp.takeDamage((isHeavy?18:10) * this.stats.dmgMuls, this.face, isHeavy, vfx)) {
                                     this.hitConnected = true;
-                                    if(this.isP) { this.combo++; this.comboTimer = 2.0; let cTxt = document.getElementById('combo-txt'); if(this.combo > 1) { cTxt.innerText = `${this.combo} HITS!`; cTxt.style.opacity = 1; setTimeout(()=>cTxt.style.opacity=0, 1500); } }
+                                    if(this.isP) { this.combo++; this.comboTimer = 2.0; let cTxt = document.getElementById('combo-txt'); if(this.combo > 1) { cTxt.innerText = `${this.combo} 连击!`; cTxt.style.opacity = 1; setTimeout(()=>cTxt.style.opacity=0, 1500); } }
                                     window.gameHitStop = isHeavy ? 0.15 : 0.08; window.gameCamShake = isHeavy ? 0.8 : 0.3;
                                 }
                             }
@@ -730,7 +730,7 @@
 
             const startGameFlow = () => {
                 audio.init(); document.getElementById('start-screen').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; document.getElementById('ui-layer').style.display = 'block';
-                document.getElementById('p1-name').innerText =["BRAWLER", "BOXER", "RONIN"][selType];
+                document.getElementById('p1-name').innerText =["格斗家", "拳击手", "浪人"][selType];
                 if(p1) scene.remove(p1.root); if(p2) scene.remove(p2.root); window.sysProjectiles.forEach(p=>{ scene.remove(p.m); p.mat.dispose(); }); window.sysProjectiles =[];
                 p1 = new Character(true, selType); scene.add(p1.root); p2 = new Character(false, Math.floor(Math.random()*3)); scene.add(p2.root);
                 appState = 'PLAY'; updateHUD();
@@ -761,7 +761,7 @@
             if(!p1 || !p2) return;
             document.getElementById('hp-player').style.width = `${Math.max(0, p1.hp)}%`; document.getElementById('hp-enemy').style.width = `${Math.max(0, p2.hp)}%`;
             if(appState === 'PLAY' && (p1.hp <= 0 || p2.hp <= 0)) {
-                appState = 'OVER'; setTimeout(() => { document.getElementById('overlay').style.display = 'flex'; document.getElementById('overlay-txt').innerText = p1.hp > 0 ? "YOU WIN!" : "K.O."; audio.sfxKO(); }, 1500);
+                appState = 'OVER'; setTimeout(() => { document.getElementById('overlay').style.display = 'flex'; document.getElementById('overlay-txt').innerText = p1.hp > 0 ? "你赢了!" : "击倒"; audio.sfxKO(); }, 1500);
             }
         }
 
