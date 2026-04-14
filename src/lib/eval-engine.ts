@@ -26,9 +26,16 @@ export function normalizeResult(raw: unknown): unknown {
 
 /** 统一错误分类：syntax / timeout / runtime */
 export function classifyError(err: unknown): { error: string; errorType: string } {
-  const error = err instanceof Error ? err.stack || err.message : String(err)
+  const error =
+    err instanceof Error
+      ? err.stack || err.message
+      : typeof err === "object" && err !== null && "stack" in err
+        ? (err as Error).stack || (err as Error).message
+        : String(err)
+  const errName = typeof err === "object" && err !== null ? (err as Error).name : ""
+  const isSyntaxError = err instanceof SyntaxError || errName === "SyntaxError"
   const errorType =
-    err instanceof SyntaxError
+    isSyntaxError
       ? "syntax"
       : err instanceof Error && err.message === "timeout"
         ? "timeout"
