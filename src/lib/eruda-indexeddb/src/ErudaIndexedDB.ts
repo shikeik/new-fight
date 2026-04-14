@@ -94,7 +94,6 @@ export default class ErudaIndexedDB {
                 <div class="eruda-btn eruda-filter">
                     <span class="eruda-icon eruda-icon-filter"></span>
                 </div>
-                <input class="eruda-filter-input" type="text" placeholder="Filter" style="display:none;width:80px;margin-left:4px;border:1px solid #ccc;padding:2px 4px;font-size:12px;vertical-align:middle;">
                 <div class="eruda-btn eruda-filter-text" style="display:none"></div>
             </h2>
             <div class="eruda-data-grid"></div>
@@ -115,19 +114,7 @@ export default class ErudaIndexedDB {
                 }
                 deleteDB(this.selectedItem.database).then(() => this.refresh());
             } else if (target.closest('.eruda-filter')) {
-                const input = this.container?.querySelector('.eruda-filter-input') as HTMLInputElement | null;
-                if (input) {
-                    if (input.style.display === 'none') {
-                        input.style.display = 'inline-block';
-                        input.focus();
-                    } else {
-                        input.style.display = 'none';
-                        input.value = '';
-                        this.filterText = '';
-                        this.updateFilterText();
-                        this.refresh();
-                    }
-                }
+                this.showFilterModal();
             } else if (target.closest('.eruda-show-detail')) {
                 if (!this.selectedItem) return;
                 const { database, store } = this.selectedItem;
@@ -140,25 +127,6 @@ export default class ErudaIndexedDB {
                 });
             }
         });
-
-        const input = this.container?.querySelector('.eruda-filter-input') as HTMLInputElement | null;
-        if (input) {
-            input.addEventListener('input', () => {
-                this.filterText = input.value;
-                this.refresh();
-            });
-            input.addEventListener('blur', () => {
-                if (!input.value) {
-                    input.style.display = 'none';
-                }
-                this.updateFilterText();
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    input.blur();
-                }
-            });
-        }
 
         this.dataGrid
             ?.on('select', (node: any) => {
@@ -173,6 +141,74 @@ export default class ErudaIndexedDB {
                 this.selectedItem = null;
                 this.updateButtons();
             });
+    }
+
+    private showFilterModal() {
+        const sr = document.getElementById('eruda')?.shadowRoot;
+        if (!sr) return;
+
+        let modal = sr.querySelector('.eruda-modal.luna-modal') as HTMLElement | null;
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'eruda-modal luna-modal luna-modal-platform-android luna-modal-theme-light';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+            modal.innerHTML = `<div class="luna-modal-body" style="width:352px">
+                <span class="luna-modal-icon luna-modal-icon-close" style="display:none"></span>
+                <div class="luna-modal-title">Filter</div>
+                <div class="luna-modal-content"><input class="luna-modal-input" value=""></div>
+                <div class="luna-modal-footer"><div class="luna-modal-button-group"><div class="luna-modal-button luna-modal-secondary">取消</div><div class="luna-modal-button luna-modal-primary">确定</div></div></div>
+            </div>`;
+            sr.appendChild(modal);
+        }
+
+        const title = modal.querySelector('.luna-modal-title') as HTMLElement | null;
+        const input = modal.querySelector('.luna-modal-input') as HTMLInputElement | null;
+        const confirmBtn = modal.querySelector('.luna-modal-primary') as HTMLElement | null;
+        const cancelBtn = modal.querySelector('.luna-modal-secondary') as HTMLElement | null;
+        const closeBtn = modal.querySelector('.luna-modal-icon-close') as HTMLElement | null;
+
+        if (!title || !input || !confirmBtn || !cancelBtn) return;
+
+        title.textContent = 'Filter';
+        input.value = this.filterText;
+        modal.style.display = 'flex';
+        input.focus();
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            confirmBtn.removeEventListener('click', onConfirm, true);
+            cancelBtn.removeEventListener('click', onCancel, true);
+            if (closeBtn) closeBtn.removeEventListener('click', onCancel, true);
+            input.removeEventListener('keydown', onKeydown);
+        };
+
+        const onConfirm = (e: Event) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            this.filterText = input.value.trim();
+            this.updateFilterText();
+            this.refresh();
+            cleanup();
+        };
+
+        const onCancel = (e: Event) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            cleanup();
+        };
+
+        const onKeydown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                onConfirm(e);
+            }
+        };
+
+        confirmBtn.addEventListener('click', onConfirm, true);
+        cancelBtn.addEventListener('click', onCancel, true);
+        if (closeBtn) closeBtn.addEventListener('click', onCancel, true);
+        input.addEventListener('keydown', onKeydown);
     }
 
     private showSources(type: string, data: unknown) {
