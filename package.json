@@ -4,7 +4,8 @@
   "description": "AI 神经元训练沙盘 - 极简跳跃游戏",
   "type": "module",
   "bin": {
-    "eval-api": "scripts/eval-api.mjs"
+    "eval-api": "scripts/eval-api.mjs",
+    "eval-api2": "scripts/eval-api2.mjs"
   },
   "scripts": {
     "dev": "vite --config configs/vite.config.ts",

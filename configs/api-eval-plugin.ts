@@ -1,97 +1,164 @@
 // ========== API Eval Bridge Plugin ==========
-// 通过 HMR WebSocket 让 curl 能在浏览器里执行任意 JS
+// /api/eval  -> 通过 HMR WebSocket 在浏览器执行 JS
+// /api/eval2 -> 在服务端 Node.js 环境中执行 JS
 
 import type { ViteDevServer } from "vite"
+import type { IncomingMessage, ServerResponse } from "node:http"
+import vm from "node:vm"
 
-const pendingRequests = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
+const pendingRequests = new Map<number, { resolve: (v: unknown) => void }>()
 let requestId = 0
+
+// 共享的 Node.js 执行上下文（持久化状态）
+const eval2Context = vm.createContext({
+	console,
+	require,
+	module: { exports: {} },
+	exports: {},
+	__dirname: process.cwd(),
+	__filename: "[eval-api2]",
+	Buffer,
+	process,
+	global,
+	setTimeout,
+	setInterval,
+	clearTimeout,
+	clearInterval,
+	fetch,
+	setImmediate: (globalThis as any).setImmediate,
+	clearImmediate: (globalThis as any).clearImmediate,
+})
+
+async function readBody(req: IncomingMessage): Promise<string> {
+	let body = ""
+	req.setEncoding("utf8")
+	for await (const chunk of req) {
+		body += chunk
+	}
+	return body
+}
+
+function parsePwd(url: URL): string | null {
+	let pwd: string | null = url.searchParams.get("pwd")
+	if (!pwd) {
+		const firstKey = url.searchParams.keys().next().value
+		if (firstKey !== undefined && url.searchParams.get(firstKey) === "") {
+			pwd = firstKey
+		}
+	}
+	return pwd
+}
+
+function sendJson(res: ServerResponse, statusCode: number, payload: object) {
+	res.statusCode = statusCode
+	res.setHeader("Content-Type", "application/json; charset=utf-8")
+	res.end(JSON.stringify(payload, null, 2) + "\n")
+}
+
+function sendResult(res: ServerResponse, id: number, result: { success: boolean; errorType: string; result: unknown; error: string | null }, isPretty: boolean) {
+	res.statusCode = 200
+	res.setHeader("Access-Control-Allow-Origin", "*")
+	if (isPretty) {
+		res.setHeader("Content-Type", "text/plain; charset=utf-8")
+		const prettyResult = result.error
+			? `❌ errorType: ${result.errorType}\n\n${result.error}`
+			: `✅ success: true\nresult: ${typeof result.result === 'object' ? JSON.stringify(result.result, null, 2) : result.result}`
+		res.end(`[Request #${id}]\n${prettyResult}\n`)
+	} else {
+		res.setHeader("Content-Type", "application/json; charset=utf-8")
+		res.end(JSON.stringify({ id, ...result }, null, 2) + "\n")
+	}
+}
+
+async function evalInServer(code: string): Promise<{ success: boolean; errorType: string; result: unknown; error: string | null }> {
+	try {
+		const wrapped = `(async () => { return await (eval(${JSON.stringify(code)})); })()`
+		let result = vm.runInContext(wrapped, eval2Context, { timeout: 5000 })
+		if (result && typeof (result as any).then === "function") {
+			result = await Promise.race([
+				result as Promise<unknown>,
+				new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
+			])
+		}
+		return { success: true, errorType: "", result, error: null }
+	} catch (err: any) {
+		const errorType = err instanceof SyntaxError ? "syntax" : err?.message === "timeout" ? "timeout" : "runtime"
+		return { success: false, errorType, result: null, error: err instanceof Error ? err.stack || err.message : String(err) }
+	}
+}
 
 export const apiEvalPlugin = {
 	name: "api-eval-bridge",
 
 	configureServer(server: ViteDevServer) {
-		// HTTP 中间件 - 接收 curl/CLI 请求
-		server.middlewares.use("/api/eval", async (req, res, _next) => {
+		// /api/eval -> 浏览器执行
+		server.middlewares.use("/api/eval", async (req, res) => {
 			if (req.method !== "POST") {
-				res.statusCode = 405
-				res.setHeader("Content-Type", "application/json; charset=utf-8")
-				res.end(JSON.stringify({ success: false, errorType: "method", result: null, error: "Method not allowed" }, null, 2) + "\n")
+				sendJson(res, 405, { success: false, errorType: "method", result: null, error: "Method not allowed" })
 				return
 			}
 
 			const id = ++requestId
-
-			// 读取请求体
-			let body = ""
-			req.setEncoding("utf8")
-			for await (const chunk of req) {
-				body += chunk
-			}
-
-			// 创建 Promise 等待浏览器响应（永不 reject，避免 unhandled rejection 崩服）
-			const responsePromise = new Promise<unknown>((resolve) => {
-				pendingRequests.set(id, { resolve, reject: resolve })
-				setTimeout(() => {
-					if (pendingRequests.has(id)) {
-						pendingRequests.delete(id)
-						resolve({ success: false, errorType: "timeout", result: null, error: "Timeout waiting for browser response" })
-					}
-				}, 5000)
-			})
+			const body = await readBody(req)
 
 			try {
 				const url = new URL(req.url || "", `http://${req.headers.host}`)
-
-				// 解析密码：支持 ?pwd=xxx 或 ?xxx 快捷方式
-				let pwd: string | null = url.searchParams.get("pwd")
-				if (!pwd) {
-					const firstKey = url.searchParams.keys().next().value
-					if (firstKey !== undefined && url.searchParams.get(firstKey) === "") {
-						pwd = firstKey
-					}
-				}
-
+				const pwd = parsePwd(url)
 				if (pwd !== "shikeik666") {
-					res.statusCode = 403
-					res.setHeader("Content-Type", "application/json; charset=utf-8")
-					res.end(JSON.stringify({ success: false, errorType: "auth", result: null, error: "Forbidden" }, null, 2) + "\n")
+					sendJson(res, 403, { success: false, errorType: "auth", result: null, error: "Forbidden" })
+					return
+				}
+				if (!body) {
+					sendJson(res, 400, { success: false, errorType: "input", result: null, error: "Missing code" })
 					return
 				}
 
-				const code = body
-				if (!code) {
-					res.statusCode = 400
-					res.setHeader("Content-Type", "application/json; charset=utf-8")
-					res.end(JSON.stringify({ success: false, errorType: "input", result: null, error: "Missing code" }, null, 2) + "\n")
-					return
-				}
+				const responsePromise = new Promise<unknown>((resolve) => {
+					pendingRequests.set(id, { resolve })
+					setTimeout(() => {
+						if (pendingRequests.has(id)) {
+							pendingRequests.delete(id)
+							resolve({ success: false, errorType: "timeout", result: null, error: "Timeout waiting for browser response" })
+						}
+					}, 5000)
+				})
 
-				// 通过 HMR WebSocket 发送给浏览器
-				server.ws.send("api-eval-request", { id, code })
-
-				// 等待浏览器响应
+				server.ws.send("api-eval-request", { id, code: body })
 				const browserResult = await responsePromise as { success: boolean; errorType: string; result: unknown; error: string | null }
-
-				const isPretty = url.searchParams.has("pretty")
-
-				res.statusCode = 200
-				res.setHeader("Access-Control-Allow-Origin", "*")
-
-				if (isPretty) {
-					res.setHeader("Content-Type", "text/plain; charset=utf-8")
-					const prettyResult = browserResult.error
-						? `❌ errorType: ${browserResult.errorType}\n\n${browserResult.error}`
-						: `✅ success: true\nresult: ${typeof browserResult.result === 'object' ? JSON.stringify(browserResult.result, null, 2) : browserResult.result}`
-					res.end(`[Request #${id}]\n${prettyResult}\n`)
-				} else {
-					res.setHeader("Content-Type", "application/json; charset=utf-8")
-					res.end(JSON.stringify({ id, ...browserResult }, null, 2) + "\n")
-				}
+				sendResult(res, id, browserResult, url.searchParams.has("pretty"))
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err)
-				res.statusCode = 500
-				res.setHeader("Content-Type", "application/json; charset=utf-8")
-				res.end(JSON.stringify({ success: false, errorType: "server", result: null, error: message }, null, 2) + "\n")
+				sendJson(res, 500, { success: false, errorType: "server", result: null, error: message })
+			}
+		})
+
+		// /api/eval2 -> 服务端 Node 执行
+		server.middlewares.use("/api/eval2", async (req, res) => {
+			if (req.method !== "POST") {
+				sendJson(res, 405, { success: false, errorType: "method", result: null, error: "Method not allowed" })
+				return
+			}
+
+			const id = ++requestId
+			const body = await readBody(req)
+
+			try {
+				const url = new URL(req.url || "", `http://${req.headers.host}`)
+				const pwd = parsePwd(url)
+				if (pwd !== "shikeik666") {
+					sendJson(res, 403, { success: false, errorType: "auth", result: null, error: "Forbidden" })
+					return
+				}
+				if (!body) {
+					sendJson(res, 400, { success: false, errorType: "input", result: null, error: "Missing code" })
+					return
+				}
+
+				const serverResult = await evalInServer(body)
+				sendResult(res, id, serverResult, url.searchParams.has("pretty"))
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err)
+				sendJson(res, 500, { success: false, errorType: "server", result: null, error: message })
 			}
 		})
 
