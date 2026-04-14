@@ -28,13 +28,13 @@ export const apiEvalPlugin = {
 				body += chunk
 			}
 
-			// 创建 Promise 等待浏览器响应
-			const responsePromise = new Promise<unknown>((resolve, reject) => {
-				pendingRequests.set(id, { resolve, reject })
+			// 创建 Promise 等待浏览器响应（永不 reject，避免 unhandled rejection 崩服）
+			const responsePromise = new Promise<unknown>((resolve) => {
+				pendingRequests.set(id, { resolve, reject: resolve })
 				setTimeout(() => {
 					if (pendingRequests.has(id)) {
 						pendingRequests.delete(id)
-						reject(new Error("Timeout waiting for browser response"))
+						resolve({ success: false, errorType: "timeout", result: null, error: "Timeout waiting for browser response" })
 					}
 				}, 5000)
 			})
