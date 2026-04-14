@@ -115,6 +115,16 @@
                 pushLog('error', '[UNHANDLED REJECTION] ' + reason);
             };
         })();
+
+        window.logs = {
+            all() { return [...window.__ALL_LOGS__]; },
+            last(n = 10) { return window.__ALL_LOGS__.slice(-n); },
+            first(n = 10) { return window.__ALL_LOGS__.slice(0, n); },
+            byLevel(level) { return window.__ALL_LOGS__.filter(l => l.level === level); },
+            byTime(start, end) { return window.__ALL_LOGS__.filter(l => l.time >= start && l.time <= end); },
+            search(kw) { return window.__ALL_LOGS__.filter(l => l.message.includes(kw)); },
+            clear() { window.__ALL_LOGS__.length = 0; return true; }
+        };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>

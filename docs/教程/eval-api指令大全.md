@@ -78,28 +78,43 @@ eval-api '(async () => await fetch("https://httpbin.org/get").then(r => r.json()
 
 ---
 
-## 常驻 API：浏览器日志 (`__ALL_LOGS__`)
+## 常驻 API：浏览器日志 (`logs`)
 
-> 需要目标页面已注入 `window.__ALL_LOGS__` 日志捕获模块。
+> 需要目标页面已注入 `window.__ALL_LOGS__` 日志捕获模块及 `window.logs` 便捷 API。
 
 ### 获取全部日志
 ```bash
-eval-api -p 'window.__ALL_LOGS__'
+eval-api -p 'logs.all()'
 ```
 
 ### 获取最近 20 条日志
 ```bash
-eval-api -p 'window.__ALL_LOGS__.slice(-20)'
+eval-api -p 'logs.last(20)'
+```
+
+### 获取最早 20 条日志
+```bash
+eval-api -p 'logs.first(20)'
 ```
 
 ### 只看 error 级别日志
 ```bash
-eval-api -p 'window.__ALL_LOGS__.filter(l => l.level === "error")'
+eval-api -p 'logs.byLevel("error")'
 ```
 
-### 从某个时间之后筛选
+### 从某个时间范围筛选
 ```bash
-eval-api -p 'window.__ALL_LOGS__.filter(l => l.time > "14:30:00")'
+eval-api -p 'logs.byTime("14:30:00", "15:00:00")'
+```
+
+### 按关键字搜索
+```bash
+eval-api -p 'logs.search("timeout")'
+```
+
+### 清空日志
+```bash
+eval-api 'logs.clear()'
 ```
 
 ---
