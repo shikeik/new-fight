@@ -1,0 +1,38 @@
+#!/bin/bash
+API1="eval-api"
+API2="eval-api2"
+run() {
+  local name="$1"
+  local code="$2"
+  echo "========== $name =========="
+  echo "code: $code"
+  echo "--- eval-api ---"
+  $API1 -p "$code" || true
+  echo "--- eval-api2 ---"
+  $API2 -p "$code" || true
+  echo ""
+}
+
+run "01. 基本数字" "1+1"
+run "02. 字符串" "'hello'"
+run "03. 对象" "({a:1,b:[2,3]})"
+run "04. undefined" "undefined"
+run "05. null" "null"
+run "06. Promise 数字" "Promise.resolve(42)"
+run "07. async 对象" "(async () => ({x:1,y:2}))()"
+run "08. 语法错误" "{1+}"
+run "09. 运行时错误" "throw new Error('runtime test')"
+run "10. 访问未定义变量" "unknownVarXYZ"
+run "11. 循环引用对象" "const a={}; a.self=a; a"
+run "12. 返回函数" "(function(){return () => 123})()"
+run "13. 大数组" "Array.from({length:5},(_,i)=>i)"
+run "14. 多行代码" "const x=1; const y=2; x+y"
+run "15. 空字符串" "''"
+run "16. Infinity" "Infinity"
+run "17. NaN" "NaN"
+run "18. JSON序列化失败的对象" "({toJSON:()=>{throw new Error('json err')}})"
+run "19. 深层嵌套对象" "({a:{b:{c:{d:1}}}})"
+run "20. 包含 undefined 的数组" "[1,undefined,3]"
+run "21. 包含 Symbol 的对象" "({s:Symbol('x')})"
+run "22. 0 和 false" "0"
+run "23. false" "false"

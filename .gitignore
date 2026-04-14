@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.log
+vite-dev.log
 .DS_Store
 
 changes.diff
@@ -11,4 +12,3 @@ scripts/mnist-data/
 
 # 游戏数据目录（用户自定义内容）
 gamedatas/
-eval-test.sh
