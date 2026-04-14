@@ -311,7 +311,7 @@
         //[3] KOF 繁杂黑街场景生成 (Cyber-Slum)
         function buildEnvironment(scene) {
             scene.background = new THREE.Color(0x110515); // 暗紫夜空
-            scene.fog = new THREE.FogExp2(0x110515, 0.02);
+            scene.fog = new THREE.FogExp2(0x110515, 0.015);
 
             // 灯光氛围：冷色环境，暖色点光源
             scene.add(new THREE.AmbientLight(0x222233, 1.5));
