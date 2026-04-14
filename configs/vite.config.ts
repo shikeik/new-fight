@@ -30,6 +30,7 @@ export default {
 		include: ["src/**/*.ts", "src/**/*.js"]
 	},
 	optimizeDeps: {
+		include: ["three/webgpu"],
 		rolldownOptions: {
 			resolve: {
 				extensions: [".ts", ".js"]
