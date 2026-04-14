@@ -8,6 +8,8 @@ export interface IndexedDBItem {
     objects: string;
 }
 
+type ModalType = 'input' | 'confirm';
+
 export default class ErudaIndexedDB {
     private dataGrid: LunaDataGrid | null = null;
     private items: IndexedDBItem[] = [];
@@ -114,20 +116,41 @@ export default class ErudaIndexedDB {
             } else if (target.closest('.eruda-delete-store')) {
                 if (!this.selectedItem) return;
                 const { database, store } = this.selectedItem;
-                if (!confirm(`Delete store '${store}' from '${database}'?`)) return;
-                this.deleteStore(database, store).then(() => {
-                    this.devTools?.notify('Deleted', { icon: 'success' });
-                    this.refresh();
-                }).catch((err) => {
-                    this.devTools?.notify('Delete failed: ' + err.message, { icon: 'error' });
+                this.showModal({
+                    type: 'confirm',
+                    title: 'Delete',
+                    message: `Delete store '${store}' from '${database}'?`,
+                    onConfirm: () => {
+                        this.deleteStore(database, store).then(() => {
+                            this.devTools?.notify('Deleted', { icon: 'success' });
+                            this.refresh();
+                        }).catch((err) => {
+                            this.devTools?.notify('Delete failed: ' + err.message, { icon: 'error' });
+                        });
+                    },
                 });
             } else if (target.closest('.eruda-clear-database')) {
-                if (!this.selectedItem || !confirm(`Are you sure that you want to delete the '${this.selectedItem.database}' database?`)) {
-                    return;
-                }
-                deleteDB(this.selectedItem.database).then(() => this.refresh());
+                if (!this.selectedItem) return;
+                const database = this.selectedItem.database;
+                this.showModal({
+                    type: 'confirm',
+                    title: 'Delete',
+                    message: `Are you sure that you want to delete the '${database}' database?`,
+                    onConfirm: () => {
+                        deleteDB(database).then(() => this.refresh());
+                    },
+                });
             } else if (target.closest('.eruda-filter')) {
-                this.showFilterModal();
+                this.showModal({
+                    type: 'input',
+                    title: 'Filter',
+                    defaultValue: this.filterText,
+                    onConfirm: (val) => {
+                        this.filterText = val.trim();
+                        this.updateFilterText();
+                        this.refresh();
+                    },
+                });
             } else if (target.closest('.eruda-show-detail')) {
                 if (!this.selectedItem) return;
                 const { database, store } = this.selectedItem;
@@ -156,7 +179,13 @@ export default class ErudaIndexedDB {
             });
     }
 
-    private showFilterModal() {
+    private showModal(options: {
+        type: ModalType;
+        title: string;
+        message?: string;
+        defaultValue?: string;
+        onConfirm: (value: string) => void;
+    }) {
         const sr = document.getElementById('eruda')?.shadowRoot;
         if (!sr) return;
 
@@ -167,42 +196,52 @@ export default class ErudaIndexedDB {
             modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
             modal.innerHTML = `<div class="luna-modal-body" style="width:352px">
                 <span class="luna-modal-icon luna-modal-icon-close" style="display:none"></span>
-                <div class="luna-modal-title">Filter</div>
-                <div class="luna-modal-content"><input class="luna-modal-input" value=""></div>
+                <div class="luna-modal-title"></div>
+                <div class="luna-modal-content"></div>
                 <div class="luna-modal-footer"><div class="luna-modal-button-group"><div class="luna-modal-button luna-modal-secondary">取消</div><div class="luna-modal-button luna-modal-primary">确定</div></div></div>
             </div>`;
             sr.appendChild(modal);
         }
 
         const title = modal.querySelector('.luna-modal-title') as HTMLElement | null;
-        const input = modal.querySelector('.luna-modal-input') as HTMLInputElement | null;
+        const content = modal.querySelector('.luna-modal-content') as HTMLElement | null;
         const confirmBtn = modal.querySelector('.luna-modal-primary') as HTMLElement | null;
         const cancelBtn = modal.querySelector('.luna-modal-secondary') as HTMLElement | null;
         const closeBtn = modal.querySelector('.luna-modal-icon-close') as HTMLElement | null;
 
-        if (!title || !input || !confirmBtn || !cancelBtn) return;
+        if (!title || !content || !confirmBtn || !cancelBtn) return;
 
-        title.textContent = 'Filter';
-        input.value = this.filterText;
+        title.textContent = options.title;
+
+        let input: HTMLInputElement | null = null;
+        if (options.type === 'input') {
+            content.innerHTML = '<input class="luna-modal-input" value="">';
+            input = content.querySelector('.luna-modal-input') as HTMLInputElement;
+            input.value = options.defaultValue || '';
+        } else {
+            content.innerHTML = `<div style="padding:10px 0;font-size:14px;color:#333;">${options.message || ''}</div>`;
+        }
+
         modal.style.display = 'flex';
-        input.focus();
-        const end = input.value.length;
-        input.setSelectionRange(end, end);
+        if (input) {
+            input.focus();
+            const end = input.value.length;
+            input.setSelectionRange(end, end);
+        }
 
         const cleanup = () => {
             modal.style.display = 'none';
             confirmBtn.removeEventListener('click', onConfirm, true);
             cancelBtn.removeEventListener('click', onCancel, true);
             if (closeBtn) closeBtn.removeEventListener('click', onCancel, true);
-            input.removeEventListener('keydown', onKeydown);
+            if (input) input.removeEventListener('keydown', onKeydown);
         };
 
         const onConfirm = (e: Event) => {
             e.stopImmediatePropagation();
             e.preventDefault();
-            this.filterText = input.value.trim();
-            this.updateFilterText();
-            this.refresh();
+            const val = input ? input.value : '';
+            options.onConfirm(val);
             cleanup();
         };
 
@@ -221,7 +260,7 @@ export default class ErudaIndexedDB {
         confirmBtn.addEventListener('click', onConfirm, true);
         cancelBtn.addEventListener('click', onCancel, true);
         if (closeBtn) closeBtn.addEventListener('click', onCancel, true);
-        input.addEventListener('keydown', onKeydown);
+        if (input) input.addEventListener('keydown', onKeydown);
     }
 
     private showSources(type: string, data: unknown) {
