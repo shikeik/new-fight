@@ -88,6 +88,9 @@ export default class ErudaIndexedDB {
                 <div class="eruda-btn eruda-show-detail eruda-btn-disabled">
                     <span class="eruda-icon eruda-icon-eye"></span>
                 </div>
+                <div class="eruda-btn eruda-delete-store eruda-btn-disabled">
+                    <span class="eruda-icon eruda-icon-delete"></span>
+                </div>
                 <div class="eruda-btn eruda-clear-database">
                     <span class="eruda-icon eruda-icon-clear"></span>
                 </div>
@@ -108,6 +111,16 @@ export default class ErudaIndexedDB {
             if (target.closest('.eruda-refresh-databases')) {
                 this.devTools?.notify('Refreshed', { icon: 'success' });
                 this.refresh();
+            } else if (target.closest('.eruda-delete-store')) {
+                if (!this.selectedItem) return;
+                const { database, store } = this.selectedItem;
+                if (!confirm(`Delete store '${store}' from '${database}'?`)) return;
+                this.deleteStore(database, store).then(() => {
+                    this.devTools?.notify('Deleted', { icon: 'success' });
+                    this.refresh();
+                }).catch((err) => {
+                    this.devTools?.notify('Delete failed: ' + err.message, { icon: 'error' });
+                });
             } else if (target.closest('.eruda-clear-database')) {
                 if (!this.selectedItem || !confirm(`Are you sure that you want to delete the '${this.selectedItem.database}' database?`)) {
                     return;
@@ -227,13 +240,46 @@ export default class ErudaIndexedDB {
     }
 
     private updateButtons() {
-        const btn = this.container?.querySelector('.eruda-show-detail') as HTMLElement | null;
-        if (!btn) return;
-        if (this.selectedItem) {
-            btn.classList.remove('eruda-btn-disabled');
-        } else {
-            btn.classList.add('eruda-btn-disabled');
+        const showDetail = this.container?.querySelector('.eruda-show-detail') as HTMLElement | null;
+        const deleteStore = this.container?.querySelector('.eruda-delete-store') as HTMLElement | null;
+        if (showDetail) {
+            if (this.selectedItem) {
+                showDetail.classList.remove('eruda-btn-disabled');
+            } else {
+                showDetail.classList.add('eruda-btn-disabled');
+            }
         }
+        if (deleteStore) {
+            if (this.selectedItem) {
+                deleteStore.classList.remove('eruda-btn-disabled');
+            } else {
+                deleteStore.classList.add('eruda-btn-disabled');
+            }
+        }
+    }
+
+    private async deleteStore(database: string, store: string): Promise<void> {
+        const dbs = await indexedDB.databases();
+        const dbInfo = dbs.find((d) => d.name === database);
+        if (!dbInfo) return;
+
+        await new Promise<void>((resolve, reject) => {
+            const req = indexedDB.open(database, (dbInfo.version || 1) + 1);
+            req.onupgradeneeded = (e) => {
+                const db = (e.target as IDBOpenDBRequest).result;
+                if (db.objectStoreNames.contains(store)) {
+                    db.deleteObjectStore(store);
+                }
+            };
+            req.onsuccess = () => {
+                req.result.close();
+                resolve();
+            };
+            req.onblocked = () => {
+                reject(new Error('Database is blocked by another connection'));
+            };
+            req.onerror = () => reject(req.error || new Error('Unknown error'));
+        });
     }
 
     private async refreshData() {
