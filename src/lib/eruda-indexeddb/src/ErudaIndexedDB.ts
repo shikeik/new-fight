@@ -16,6 +16,7 @@ export default class ErudaIndexedDB {
     private supported = true;
     private container: HTMLElement | null = null;
     private dataGridEl: HTMLElement | null = null;
+    private filterText = '';
 
     public init($container: HTMLElement, devTools: DevTools): void {
         this.devTools = devTools;
@@ -56,8 +57,24 @@ export default class ErudaIndexedDB {
 
         this.dataGrid?.clear();
 
+        const filter = this.filterText.toLowerCase();
         for (const { database, store, objects } of this.items) {
+            if (filter && !`${database} ${store} ${objects}`.toLowerCase().includes(filter)) {
+                continue;
+            }
             this.dataGrid?.append({ database, store, objects }, { selectable: true });
+        }
+    }
+
+    private updateFilterText() {
+        const el = this.container?.querySelector('.eruda-filter-text') as HTMLElement | null;
+        if (!el) return;
+        if (this.filterText) {
+            el.textContent = this.filterText;
+            el.style.display = '';
+        } else {
+            el.textContent = '';
+            el.style.display = 'none';
         }
     }
 
@@ -74,6 +91,10 @@ export default class ErudaIndexedDB {
                 <div class="eruda-btn eruda-clear-database">
                     <span class="eruda-icon eruda-icon-clear"></span>
                 </div>
+                <div class="eruda-btn eruda-filter">
+                    <span class="eruda-icon eruda-icon-filter"></span>
+                </div>
+                <div class="eruda-btn eruda-filter-text" style="display:none"></div>
             </h2>
             <div class="eruda-data-grid"></div>
         `;
@@ -92,6 +113,15 @@ export default class ErudaIndexedDB {
                     return;
                 }
                 deleteDB(this.selectedItem.database).then(() => this.refresh());
+            } else if (target.closest('.eruda-filter')) {
+                this.devTools?.notify('Filter', {
+                    input: true,
+                    onConfirm: (val: string) => {
+                        this.filterText = val || '';
+                        this.updateFilterText();
+                        this.refresh();
+                    },
+                });
             } else if (target.closest('.eruda-show-detail')) {
                 if (!this.selectedItem) return;
                 const { database, store } = this.selectedItem;
