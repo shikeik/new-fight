@@ -60,29 +60,21 @@
     </style>
 
     <script>
-        // ===== 浏览器日志中继 =====
+        // ===== 浏览器日志捕获 =====
+        window.__ALL_LOGS__ = [];
         (function() {
-            const logQueue = [];
-            const sendLogs = () => {
-                if (!logQueue.length) return;
-                const batch = logQueue.splice(0, logQueue.length);
-                fetch('http://' + location.host + '/api/logs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ logs: batch }),
-                    mode: 'no-cors'
-                }).catch(() => {});
-            };
-            setInterval(sendLogs, 300);
-
             const serialize = (args) => args.map(a => {
                 if (typeof a === 'object') try { return JSON.stringify(a); } catch { return String(a); }
                 return String(a);
             }).join(' ');
 
+            const pushLog = (level, message) => {
+                window.__ALL_LOGS__.push({ time: new Date().toLocaleTimeString(), level, message });
+            };
+
             const hook = (level, orig) => function(...args) {
                 orig.apply(this, args);
-                logQueue.push({ time: new Date().toLocaleTimeString(), level, message: serialize(args) });
+                pushLog(level, serialize(args));
             };
 
             console.log   = hook('log',   console.log);
@@ -90,23 +82,19 @@
             console.warn  = hook('warn',  console.warn);
             console.error = hook('error', console.error);
 
-            // table 特殊处理
             const origTable = console.table;
             console.table = function(data, columns) {
                 origTable.apply(this, arguments);
-                try {
-                    logQueue.push({ time: new Date().toLocaleTimeString(), level: 'table', message: JSON.stringify({ data, columns }) });
-                } catch {}
+                try { pushLog('table', JSON.stringify({ data, columns })); } catch {}
             };
 
-            // 未捕获异常
             window.onerror = (msg, url, line, col, err) => {
                 const text = err && err.stack ? err.stack : `${msg} at ${url}:${line}:${col}`;
-                logQueue.push({ time: new Date().toLocaleTimeString(), level: 'error', message: '[UNCAUGHT] ' + text });
+                pushLog('error', '[UNCAUGHT] ' + text);
             };
             window.onunhandledrejection = (e) => {
                 const reason = e.reason && e.reason.stack ? e.reason.stack : String(e.reason);
-                logQueue.push({ time: new Date().toLocaleTimeString(), level: 'error', message: '[UNHANDLED REJECTION] ' + reason });
+                pushLog('error', '[UNHANDLED REJECTION] ' + reason);
             };
         })();
     </script>
