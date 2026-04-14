@@ -5,7 +5,7 @@
 import type { ViteDevServer } from "vite"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import vm from "node:vm"
-import { normalizeResult, classifyError, type EvalResult } from "../src/lib/eval-engine.ts"
+import { normalizeResult, makeSuccessResult, makeErrorResult, type EvalResult } from "../src/lib/eval-engine.ts"
 
 const pendingRequests = new Map<number, { resolve: (v: unknown) => void }>()
 let requestId = 0
@@ -83,10 +83,9 @@ async function evalInServer(code: string): Promise<EvalResult> {
 				new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
 			])
 		}
-		return { success: true, errorType: null, result: normalizeResult(raw), error: null }
+		return makeSuccessResult(normalizeResult(raw))
 	} catch (err: unknown) {
-		const { error, errorType } = classifyError(err)
-		return { success: false, errorType, result: null, error }
+		return makeErrorResult(err)
 	}
 }
 
