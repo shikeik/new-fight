@@ -29,7 +29,7 @@
 			"@managers/*": ["src/fox-jump/managers/*"]
 		}
 	},
-	"include": ["../src/**/*.ts"],
+	"include": ["../src/**/*.ts", "../src/**/*.d.ts"],
 	"exclude": ["../src/**/*.test.ts", "../src/causal-ai/cli/**/*"],
 	"references": [{ "path": "./tsconfig.node.json" }]
 }
