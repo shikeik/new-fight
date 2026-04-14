@@ -8,8 +8,9 @@
 - [x] 浏览器日志全量捕获及便捷 API（`logs.all / last / byLevel / search`）
 - [x] eruda Resources 面板注入原生风格 IndexedDB 表格
 - [x] 提取 eval-api / eval-api2 共用执行引擎，消除重复代码
+- [x] 发布并迁移 `eruda-indexeddb` 为 npm 包 `@shikeik/eruda-indexeddb`
+- [x] 清理所有 lint 警告和错误
 
 ## 进行中 / 待办 ⏳
 - [ ] 更新技能索引 `docs/规范/代码质量规范.md`
-- [ ] 清理所有 lint 警告和错误
 - [ ] 按代码质量重构技能工程化重构 `index.html`
