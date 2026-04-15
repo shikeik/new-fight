@@ -1,6 +1,4 @@
 import * as THREE from "three"
-import mountIndexedDB from "@shikeik/eruda-indexeddb"
-
 import { normalizeResult, makeSuccessResult, makeErrorResult } from "@scripts/eval-engine.ts"
 import { modTick } from "@/core/runtime/mod-tick.ts"
 import { logs } from "@/core/runtime/log-capture.ts"
@@ -90,12 +88,7 @@ if (hot) {
   })
 }
 
-// ===== Inject IndexedDB into eruda Resources =====
-// eslint-disable-next-line no-undef
-if (typeof eruda !== "undefined" && eruda.get) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-undef
-  mountIndexedDB(eruda as any)
-}
+
 
 async function init() {
   const canvasBox = document.getElementById("canvas-container")

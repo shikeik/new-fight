@@ -1,123 +1,472 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>终极格斗：地下拳场 4.x</title>
-    <style>
-        /* ================= KOF 赛博黑街风 UI ================= */
-        :root { --c-main: #00ffff; --c-accent: #ff0055; --c-bg: #050508; --c-panel: rgba(10, 15, 25, 0.85); }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--c-bg); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; font-family: 'Arial Black', Impact, sans-serif; }
-        
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background-color: var(--c-bg); }
-        
-        .top-bar { position: absolute; top: 10px; width: 100%; display: flex; justify-content: center; z-index: 100; pointer-events: none; }
-        .top-btn { pointer-events: auto; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--c-main); color: var(--c-main); width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,255,0.2); display: flex; align-items: center; justify-content: center; }
-        .top-btn:hover { background: var(--c-main); color: #000; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>终极格斗：地下拳场 4.x</title>
+  <style>
+    /* ================= KOF 赛博黑街风 UI ================= */
+    :root {
+      --c-main: #00ffff;
+      --c-accent: #ff0055;
+      --c-bg: #050508;
+      --c-panel: rgba(10, 15, 25, 0.85);
+    }
 
-        /* 暗黑系选人界面 */
-        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(20,10,30,0.9) 0%, rgba(5,5,10,0.98) 100%); z-index: 50; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
-        .logo { font-size: 8vh; font-style: italic; color: #fff; text-shadow: 0 0 10px var(--c-main), 3px 3px 0px var(--c-accent); margin-bottom: 3vh; letter-spacing: 4px; }
-        .roster { display: flex; gap: 2vw; margin-bottom: 3vh; flex-wrap: wrap; justify-content: center; }
-        .char-card { width: 16vw; max-width: 130px; padding: 10px; background: var(--c-panel); border: 2px solid #333; text-align: center; color: #777; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .char-card.active { border-color: var(--c-main); color: #fff; box-shadow: 0 0 20px rgba(0,255,255,0.4), inset 0 0 15px rgba(0,255,255,0.1); transform: translateY(-5px); }
-        .char-icon { width: 6vh; height: 6vh; margin: 0 auto 10px; border-radius: 8px; border: 2px solid #222; box-shadow: inset 0 0 10px #000; }
-        .char-stats { font-size: 10px; text-align: left; margin-top: 10px; display: none; line-height: 1.4; color: var(--c-main); }
-        .char-card.active .char-stats { display: block; }
-        .btn-start { padding: 12px 50px; font-size: 24px; color: #000; background: var(--c-main); border: none; border-radius: 8px; cursor: pointer; font-weight: 900; box-shadow: 0 0 20px var(--c-main); transition: 0.2s; text-transform: uppercase; }
-        .btn-start:active { transform: scale(0.95); box-shadow: 0 0 10px var(--c-main); }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--c-bg);
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Arial Black', Impact, sans-serif;
+    }
 
-        /* 战斗 HUD - 霓虹黑风 */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
-        .hud { display: flex; justify-content: space-between; padding: 2vh 4vw; width: 100%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); }
-        .player-info { width: 42%; }
-        .p-name { color: #fff; font-size: 20px; text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-main); margin-bottom: 5px; font-style: italic; font-weight: 900; letter-spacing: 1px; }
-        .enemy-info .p-name { text-align: right; text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-accent); }
-        .hp-bar { width: 100%; height: 25px; background: rgba(30,30,40,0.8); border: 2px solid #fff; transform: skewX(-15deg); box-shadow: 4px 4px 0 rgba(0,0,0,0.6); overflow: hidden; }
-        .hp-fill { height: 100%; background: linear-gradient(90deg, #00ffaa, #ccffaa); width: 100%; transition: width 0.15s ease-out; box-shadow: 0 0 10px #00ffaa; }
-        .enemy-info .hp-fill { background: linear-gradient(90deg, #ff0055, #ffaa00); float: right; box-shadow: 0 0 10px #ff0055; }
-        .combo-counter { position: absolute; top: 80px; left: 4vw; font-size: 45px; color: #ffdd00; text-shadow: 3px 3px 0 #ff0000, 0 0 15px #ff8800; opacity: 0; transition: opacity 0.2s; font-style: italic; transform: skewX(-10deg); }
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background-color: var(--c-bg);
+    }
 
-        /* 操作区 - 降低亮度，霓虹边框 */
-        #dir-zone { position: absolute; bottom: 30px; left: 40px; width: 160px; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        #slider-track { width: 100%; height: 50px; background: rgba(0,0,0,0.5); border-radius: 25px; border: 2px solid rgba(0,255,255,0.4); position: relative; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
-        #slider-knob { width: 60px; height: 60px; background: rgba(200,255,255,0.9); border-radius: 50%; box-shadow: 0 0 15px var(--c-main); position: absolute; top: -7px; left: 48px; transition: transform 0.05s linear; pointer-events: none; border: 2px solid #fff; }
-        .btn-block { width: 80px; height: 45px; border-radius: 12px; background: rgba(50,50,50,0.8); color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; box-shadow: 0 4px 0 #111; border: 2px solid #555; transition: 0.1s; }
-        .btn-block:active { transform: translateY(4px); box-shadow: 0 0 0 #111; background: var(--c-main); color: #000; border-color: #fff; }
+    .top-bar {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+    }
 
-        .btn-group { position: absolute; bottom: 30px; right: 40px; width: 160px; height: 160px; pointer-events: auto; touch-action: none; }
-        .btn-act { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 2px solid; user-select: none; text-shadow: 1px 1px 2px #000; }
-        .btn-act:active { transform: translateY(4px) scale(0.95); box-shadow: 0 0 15px; }
-        
-        #btn-a { bottom: 0; right: 0; background: rgba(255,0,85,0.6); border-color: #ff0055; width: 75px; height: 75px; font-size: 22px; } 
-        #btn-b { bottom: 85px; right: 65px; background: rgba(0,255,170,0.6); border-color: #00ffaa; width: 60px; height: 60px; font-size: 16px; } 
-        #btn-c { bottom: 15px; right: 95px; background: rgba(255,170,0,0.6); border-color: #ffaa00; width: 60px; height: 60px; font-size: 16px; } 
-        #btn-s { bottom: 110px; right: 0px; background: rgba(0,170,255,0.6); border-color: #00aaff; width: 60px; height: 60px; font-size: 16px; } 
+    .top-btn {
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--c-main);
+      color: var(--c-main);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      font-size: 18px;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: 0.2s;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 200; pointer-events: auto; backdrop-filter: blur(5px); }
-        .overlay-msg { font-size: 70px; color: var(--c-main); text-shadow: 4px 4px 0 #000, 0 0 20px var(--c-main); transform: scale(0); animation: stamp 0.4s forwards; margin-bottom: 30px; font-style: italic; }
-        @keyframes stamp { to { transform: scale(1); } }
-    </style>
+    .top-btn:hover {
+      background: var(--c-main);
+      color: #000;
+    }
 
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
+    /* 暗黑系选人界面 */
+    #start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(20, 10, 30, 0.9) 0%, rgba(5, 5, 10, 0.98) 100%);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      font-size: 8vh;
+      font-style: italic;
+      color: #fff;
+      text-shadow: 0 0 10px var(--c-main), 3px 3px 0px var(--c-accent);
+      margin-bottom: 3vh;
+      letter-spacing: 4px;
+    }
+
+    .roster {
+      display: flex;
+      gap: 2vw;
+      margin-bottom: 3vh;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .char-card {
+      width: 16vw;
+      max-width: 130px;
+      padding: 10px;
+      background: var(--c-panel);
+      border: 2px solid #333;
+      text-align: center;
+      color: #777;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .char-card.active {
+      border-color: var(--c-main);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), inset 0 0 15px rgba(0, 255, 255, 0.1);
+      transform: translateY(-5px);
+    }
+
+    .char-icon {
+      width: 6vh;
+      height: 6vh;
+      margin: 0 auto 10px;
+      border-radius: 8px;
+      border: 2px solid #222;
+      box-shadow: inset 0 0 10px #000;
+    }
+
+    .char-stats {
+      font-size: 10px;
+      text-align: left;
+      margin-top: 10px;
+      display: none;
+      line-height: 1.4;
+      color: var(--c-main);
+    }
+
+    .char-card.active .char-stats {
+      display: block;
+    }
+
+    .btn-start {
+      padding: 12px 50px;
+      font-size: 24px;
+      color: #000;
+      background: var(--c-main);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 900;
+      box-shadow: 0 0 20px var(--c-main);
+      transition: 0.2s;
+      text-transform: uppercase;
+    }
+
+    .btn-start:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 10px var(--c-main);
+    }
+
+    /* 战斗 HUD - 霓虹黑风 */
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      padding: 2vh 4vw;
+      width: 100%;
+      box-sizing: border-box;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+    }
+
+    .player-info {
+      width: 42%;
+    }
+
+    .p-name {
+      color: #fff;
+      font-size: 20px;
+      text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-main);
+      margin-bottom: 5px;
+      font-style: italic;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .enemy-info .p-name {
+      text-align: right;
+      text-shadow: 2px 2px 0 #000, 0 0 8px var(--c-accent);
+    }
+
+    .hp-bar {
+      width: 100%;
+      height: 25px;
+      background: rgba(30, 30, 40, 0.8);
+      border: 2px solid #fff;
+      transform: skewX(-15deg);
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ffaa, #ccffaa);
+      width: 100%;
+      transition: width 0.15s ease-out;
+      box-shadow: 0 0 10px #00ffaa;
+    }
+
+    .enemy-info .hp-fill {
+      background: linear-gradient(90deg, #ff0055, #ffaa00);
+      float: right;
+      box-shadow: 0 0 10px #ff0055;
+    }
+
+    .combo-counter {
+      position: absolute;
+      top: 80px;
+      left: 4vw;
+      font-size: 45px;
+      color: #ffdd00;
+      text-shadow: 3px 3px 0 #ff0000, 0 0 15px #ff8800;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-style: italic;
+      transform: skewX(-10deg);
+    }
+
+    /* 操作区 - 降低亮度，霓虹边框 */
+    #dir-zone {
+      position: absolute;
+      bottom: 30px;
+      left: 40px;
+      width: 160px;
+      pointer-events: auto;
+      touch-action: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #slider-track {
+      width: 100%;
+      height: 50px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 25px;
+      border: 2px solid rgba(0, 255, 255, 0.4);
+      position: relative;
+      box-sizing: border-box;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    #slider-knob {
+      width: 60px;
+      height: 60px;
+      background: rgba(200, 255, 255, 0.9);
+      border-radius: 50%;
+      box-shadow: 0 0 15px var(--c-main);
+      position: absolute;
+      top: -7px;
+      left: 48px;
+      transition: transform 0.05s linear;
+      pointer-events: none;
+      border: 2px solid #fff;
+    }
+
+    .btn-block {
+      width: 80px;
+      height: 45px;
+      border-radius: 12px;
+      background: rgba(50, 50, 50, 0.8);
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 900;
+      box-shadow: 0 4px 0 #111;
+      border: 2px solid #555;
+      transition: 0.1s;
+    }
+
+    .btn-block:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #111;
+      background: var(--c-main);
+      color: #000;
+      border-color: #fff;
+    }
+
+    .btn-group {
+      position: absolute;
+      bottom: 30px;
+      right: 40px;
+      width: 160px;
+      height: 160px;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .btn-act {
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      border: 2px solid;
+      user-select: none;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .btn-act:active {
+      transform: translateY(4px) scale(0.95);
+      box-shadow: 0 0 15px;
+    }
+
+    #btn-a {
+      bottom: 0;
+      right: 0;
+      background: rgba(255, 0, 85, 0.6);
+      border-color: #ff0055;
+      width: 75px;
+      height: 75px;
+      font-size: 22px;
+    }
+
+    #btn-b {
+      bottom: 85px;
+      right: 65px;
+      background: rgba(0, 255, 170, 0.6);
+      border-color: #00ffaa;
+      width: 60px;
+      height: 60px;
+      font-size: 16px;
+    }
+
+    #btn-c {
+      bottom: 15px;
+      right: 95px;
+      background: rgba(255, 170, 0, 0.6);
+      border-color: #ffaa00;
+      width: 60px;
+      height: 60px;
+      font-size: 16px;
+    }
+
+    #btn-s {
+      bottom: 110px;
+      right: 0px;
+      background: rgba(0, 170, 255, 0.6);
+      border-color: #00aaff;
+      width: 60px;
+      height: 60px;
+      font-size: 16px;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 200;
+      pointer-events: auto;
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay-msg {
+      font-size: 70px;
+      color: var(--c-main);
+      text-shadow: 4px 4px 0 #000, 0 0 20px var(--c-main);
+      transform: scale(0);
+      animation: stamp 0.4s forwards;
+      margin-bottom: 30px;
+      font-style: italic;
+    }
+
+    @keyframes stamp {
+      to { transform: scale(1); }
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/eruda@3.4.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@shikeik/eruda-indexeddb@1.0.2"></script>
+  <script>
+    eruda.init()
+    erudaIndexedDB(eruda)
+  </script>
 </head>
 <body>
-    <div class="top-bar"><button class="top-btn" id="btn-fs">⛶</button></div>
-    <div id="canvas-container"></div>
+  <div class="top-bar"><button class="top-btn" id="btn-fs">⛶</button></div>
+  <div id="canvas-container"></div>
 
-    <div id="start-screen">
-        <div class="logo">霓虹贫民窟 4.0</div>
-        <div class="roster">
-            <div class="char-card active" data-type="0">
-                <div class="char-icon" style="background: linear-gradient(135deg, #00ffff, #0055ff);"></div>
-                <h3>格斗家</h3>
-                <div class="char-stats">速度: ★★★☆☆<br>攻击: ★★★☆☆<br>连击大师</div>
-            </div>
-            <div class="char-card" data-type="1">
-                <div class="char-icon" style="background: linear-gradient(135deg, #ff0055, #550000);"></div>
-                <h3>拳击手</h3>
-                <div class="char-stats">速度: ★★☆☆☆<br>攻击: ★★★★★<br>重击手</div>
-            </div>
-            <div class="char-card" data-type="2">
-                <div class="char-icon" style="background: linear-gradient(135deg, #00ffaa, #005522);"></div>
-                <h3>浪人</h3>
-                <div class="char-stats">速度: ★★★★☆<br>攻击: ★★★☆☆<br>长臂拳</div>
-            </div>
-        </div>
-        <button class="btn-start" id="start-btn">开始战斗</button>
+  <div id="start-screen">
+    <div class="logo">霓虹贫民窟 4.0</div>
+    <div class="roster">
+      <div class="char-card active" data-type="0">
+        <div class="char-icon" style="background: linear-gradient(135deg, #00ffff, #0055ff);"></div>
+        <h3>格斗家</h3>
+        <div class="char-stats">速度: ★★★☆☆<br>攻击: ★★★☆☆<br>连击大师</div>
+      </div>
+      <div class="char-card" data-type="1">
+        <div class="char-icon" style="background: linear-gradient(135deg, #ff0055, #550000);"></div>
+        <h3>拳击手</h3>
+        <div class="char-stats">速度: ★★☆☆☆<br>攻击: ★★★★★<br>重击手</div>
+      </div>
+      <div class="char-card" data-type="2">
+        <div class="char-icon" style="background: linear-gradient(135deg, #00ffaa, #005522);"></div>
+        <h3>浪人</h3>
+        <div class="char-stats">速度: ★★★★☆<br>攻击: ★★★☆☆<br>长臂拳</div>
+      </div>
     </div>
+    <button class="btn-start" id="start-btn">开始战斗</button>
+  </div>
 
-    <div id="ui-layer">
-        <div class="hud">
-            <div class="player-info">
-                <div class="p-name">P1 <span id="p1-name"></span></div>
-                <div class="hp-bar"><div id="hp-player" class="hp-fill"></div></div>
-            </div>
-            <div class="player-info enemy-info">
-                <div class="p-name">AI 敌人</div>
-                <div class="hp-bar"><div id="hp-enemy" class="hp-fill"></div></div>
-            </div>
-        </div>
-        <div id="combo-txt" class="combo-counter">2 连击!</div>
-        
-        <div id="dir-zone">
-            <div id="slider-track"><div id="slider-knob"></div></div>
-            <div id="btn-d" class="btn-block">防御</div>
-        </div>
-        <div class="btn-group">
-            <div id="btn-a" class="btn-act" style="color:#ff0055">攻击</div>
-            <div id="btn-b" class="btn-act" style="color:#00ffaa">跳跃</div>
-            <div id="btn-c" class="btn-act" style="color:#ffaa00">冲刺</div>
-            <div id="btn-s" class="btn-act" style="color:#00aaff">技能</div>
-        </div>
+  <div id="ui-layer">
+    <div class="hud">
+      <div class="player-info">
+        <div class="p-name">P1 <span id="p1-name"></span></div>
+        <div class="hp-bar"><div id="hp-player" class="hp-fill"></div></div>
+      </div>
+      <div class="player-info enemy-info">
+        <div class="p-name">AI 敌人</div>
+        <div class="hp-bar"><div id="hp-enemy" class="hp-fill"></div></div>
+      </div>
     </div>
+    <div id="combo-txt" class="combo-counter">2 连击!</div>
 
-    <div id="overlay">
-        <div id="overlay-txt" class="overlay-msg">击倒!</div>
-        <button class="btn-start" id="restart-btn" style="padding:15px 40px;">再战</button>
+    <div id="dir-zone">
+      <div id="slider-track"><div id="slider-knob"></div></div>
+      <div id="btn-d" class="btn-block">防御</div>
     </div>
+    <div class="btn-group">
+      <div id="btn-a" class="btn-act" style="color:#ff0055">攻击</div>
+      <div id="btn-b" class="btn-act" style="color:#00ffaa">跳跃</div>
+      <div id="btn-c" class="btn-act" style="color:#ffaa00">冲刺</div>
+      <div id="btn-s" class="btn-act" style="color:#00aaff">技能</div>
+    </div>
+  </div>
 
-    <script type="module" src="/src/apps/fighter/main.ts"></script>
+  <div id="overlay">
+    <div id="overlay-txt" class="overlay-msg">击倒!</div>
+    <button class="btn-start" id="restart-btn" style="padding:15px 40px;">再战</button>
+  </div>
+
+  <script type="module" src="/src/apps/fighter/main.ts"></script>
 </body>
 </html>
