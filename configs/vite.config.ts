@@ -42,7 +42,7 @@ export default {
 	},
 	esbuild: {
 		loader: "ts",
-		include: ["src/**/*.ts", "src/**/*.js"]
+		include: ["src/**/*.ts", "src/**/*.js", "scripts/**/*.ts"]
 	},
 	optimizeDeps: {
 		include: ["three", "luna-data-grid", "licia", "idb"],
