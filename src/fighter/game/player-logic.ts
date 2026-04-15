@@ -20,7 +20,7 @@ export function processPlayerLogic(
   if (!p1 || p1.state === ST.DEAD) return
   const onGnd = p1.pos.y <= CFG.floorY + 0.1
 
-  // 1. 最高优先级：闪避打�?(Dash Cancel)
+  // 1. 最高优先级：闪避打断 (Dash Cancel)
   if (input.c) {
     const isAtk = p1.state >= ST.ATK1 && p1.state <= ST.DASH_ATK
     if (onGnd) {
@@ -62,7 +62,7 @@ export function processPlayerLogic(
     p1.changeState(ST.IDLE)
   }
 
-  // 3. 常规动作与连招系�?
+  // 3. 常规动作与连招系统
   if ([ST.IDLE, ST.WALK, ST.JUMP, ST.FALL].includes(p1.state)) {
     if (input.x !== 0) {
       p1.vel.x = input.x * p1.stats.spd
@@ -124,4 +124,3 @@ export function processPlayerLogic(
     }
   }
 }
-

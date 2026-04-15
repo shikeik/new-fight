@@ -91,7 +91,7 @@ export function applyAnim(
   }
 }
 
-// ================= 通用动画�?=================
+// ================= 通用动画表 =================
 
 const IDLE: AnimTrack = {
   loop: true,
@@ -173,7 +173,7 @@ const DASH_ATK: AnimTrack = {
   ],
 }
 
-// ================= 类型差异化动�?=================
+// ================= 类型差异化动画 =================
 
 function atk1(type: number): AnimTrack {
   if (type === 2) {
@@ -296,4 +296,3 @@ export function getAnimTrack(state: number, type: number): AnimTrack {
       return IDLE
   }
 }
-

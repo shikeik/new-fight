@@ -1,10 +1,19 @@
 import { resolve } from "path"
+import { globSync } from "fs"
 import basicSsl from "@vitejs/plugin-basic-ssl"
 import { apiEvalPlugin } from "./api-eval-plugin.ts"
 
 // 项目根目录（vite.config.ts 现在在 configs/ 目录下）
 const rootDir = resolve(__dirname, "..")
 const useHttps = process.env.HTTPS === "true"
+
+// 自动扫描 pages/ 目录下的所有 .html 作为构建入口
+const pageEntries = Object.fromEntries(
+	globSync("pages/*.html", { cwd: rootDir }).map((file) => [
+		file.replace(/^pages\//, "").replace(/\.html$/, ""),
+		resolve(rootDir, file),
+	])
+)
 
 export default {
 	server: {
@@ -19,8 +28,7 @@ export default {
 		rollupOptions: {
 			input: {
 				index: resolve(rootDir, "index.html"),
-				fighter: resolve(rootDir, "pages/fighter.html"),
-				tank: resolve(rootDir, "pages/tank.html"),
+				...pageEntries,
 			}
 		}
 	},
