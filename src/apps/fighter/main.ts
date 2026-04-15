@@ -29,9 +29,7 @@ async function injectScript(src: string) {
 await injectScript(`https://cdn.jsdelivr.net/npm/eruda@${CDN.eruda}`)
 await injectScript(`https://cdn.jsdelivr.net/npm/@shikeik/eruda-indexeddb@${CDN.erudaIndexedDB}`)
 
-// @ts-expect-error global from CDN
 eruda.init()
-// @ts-expect-error global from CDN
 erudaIndexedDB(eruda)
 
 let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer

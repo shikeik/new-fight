@@ -7,6 +7,8 @@ declare module "three/webgpu" {
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eruda: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const erudaIndexedDB: (e: any) => void
 
   interface ImportMeta {
     hot?: {
