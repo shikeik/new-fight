@@ -39,7 +39,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@shikeik/eruda-indexeddb": "^1.0.1",
+    "@shikeik/eruda-indexeddb": "^1.0.2",
     "eruda": "^3.4.3",
     "luna-modal": "^1.3.3",
     "rollup": "^4.60.1",
