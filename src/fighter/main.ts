@@ -1,9 +1,9 @@
 import * as THREE from "three"
 import mountIndexedDB from "@shikeik/eruda-indexeddb"
 
-import { normalizeResult, makeSuccessResult, makeErrorResult } from "./lib/eval-engine.ts"
-import { modTick } from "./infra/mod-tick.ts"
-import { logs } from "./infra/log-capture.ts"
+import { normalizeResult, makeSuccessResult, makeErrorResult } from "@/shared/lib/eval-engine.ts"
+import { modTick } from "@/shared/infra/mod-tick.ts"
+import { logs } from "@/shared/infra/log-capture.ts"
 import { audio } from "./audio/audio-engine.ts"
 import { VFXEngine } from "./render/vfx-engine.ts"
 import { buildEnvironment } from "./render/environment.ts"
