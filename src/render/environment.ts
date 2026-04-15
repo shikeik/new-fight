@@ -1,4 +1,5 @@
 import * as THREE from "three/webgpu"
+import { CFG } from "../config/game-config.ts"
 
 export function buildEnvironment(scene: THREE.Scene) {
   scene.background = new THREE.Color(0x110515)
@@ -99,22 +100,24 @@ export function buildEnvironment(scene: THREE.Scene) {
   scene.add(sign)
 
   // ===== 雨滴粒子 =====
-  const rainGeo = new THREE.BufferGeometry()
-  const rainCount = 4000
-  const rainPos = new Float32Array(rainCount * 3)
-  for (let i = 0; i < rainCount; i++) {
-    rainPos[i * 3] = (Math.random() - 0.5) * 120
-    rainPos[i * 3 + 1] = Math.random() * 60
-    rainPos[i * 3 + 2] = (Math.random() - 0.5) * 60
+  if (CFG.showRain) {
+    const rainGeo = new THREE.BufferGeometry()
+    const rainCount = 4000
+    const rainPos = new Float32Array(rainCount * 3)
+    for (let i = 0; i < rainCount; i++) {
+      rainPos[i * 3] = (Math.random() - 0.5) * 120
+      rainPos[i * 3 + 1] = Math.random() * 60
+      rainPos[i * 3 + 2] = (Math.random() - 0.5) * 60
+    }
+    rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3))
+    const rainMat = new THREE.PointsMaterial({
+      color: 0x8899aa,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.4,
+    })
+    const rain = new THREE.Points(rainGeo, rainMat)
+    rain.name = "rain"
+    scene.add(rain)
   }
-  rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3))
-  const rainMat = new THREE.PointsMaterial({
-    color: 0x8899aa,
-    size: 0.15,
-    transparent: true,
-    opacity: 0.4,
-  })
-  const rain = new THREE.Points(rainGeo, rainMat)
-  rain.name = "rain"
-  scene.add(rain)
 }

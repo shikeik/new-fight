@@ -251,18 +251,20 @@ function updateEnvironment(scene: THREE.Scene, time: number) {
     sign.material.opacity = flicker
   }
 
-  const rain = scene.getObjectByName("rain") as THREE.Points
-  if (rain) {
-    const positions = rain.geometry.attributes.position.array as Float32Array
-    for (let i = 0; i < positions.length / 3; i++) {
-      positions[i * 3 + 1] -= 0.8
-      if (positions[i * 3 + 1] < 0) {
-        positions[i * 3 + 1] = 60
-        positions[i * 3] = (Math.random() - 0.5) * 120
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 60
+  if (CFG.showRain) {
+    const rain = scene.getObjectByName("rain") as THREE.Points
+    if (rain) {
+      const positions = rain.geometry.attributes.position.array as Float32Array
+      for (let i = 0; i < positions.length / 3; i++) {
+        positions[i * 3 + 1] -= 0.8
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 60
+          positions[i * 3] = (Math.random() - 0.5) * 120
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 60
+        }
       }
+      rain.geometry.attributes.position.needsUpdate = true
     }
-    rain.geometry.attributes.position.needsUpdate = true
   }
 }
 

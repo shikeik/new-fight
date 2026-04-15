@@ -12,6 +12,7 @@ export const CFG: GameConfig = {
   justWindow: 0.12,
   slowMoFactor: 0.2,
   slowMoDuration: 0.3,
+  showRain: false,
 }
 
 export const ST = {
