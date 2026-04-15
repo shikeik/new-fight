@@ -310,9 +310,9 @@ export class Character {
                 if (ui) ui.showCombo(this.combo)
               }
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ;(window as any).gameHitStop = isHeavy ? 0.15 : 0.08
+              ;(window as any).__GAME__.gameHitStop = isHeavy ? 0.15 : 0.08
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ;(window as any).gameCamShake = isHeavy ? 0.8 : 0.3
+              ;(window as any).__GAME__.gameCamShake = isHeavy ? 0.8 : 0.3
             }
           }
         }
@@ -344,7 +344,7 @@ export class Character {
         proj.position.set(this.pos.x + this.face * 2, this.pos.y + 1.5, 0)
         scene.add(proj)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(window as any).sysProjectiles.push({
+        ;(window as any).__GAME__.sysProjectiles.push({
           m: proj,
           vx: this.face * 35,
           owner: this,

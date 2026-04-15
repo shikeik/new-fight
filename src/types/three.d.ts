@@ -9,8 +9,8 @@ declare global {
   const eruda: any
 
   interface ImportMeta {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hot?: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       on: (event: string, cb: (data: any) => void) => void
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       send: (event: string, data: any) => void

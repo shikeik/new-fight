@@ -35,15 +35,11 @@ export function updateCamera(
   )
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).gameCamShake > 0) {
-    camera.position.x +=
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (Math.random() - 0.5) * (window as any).gameCamShake * 2
-    camera.position.y =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      targetY + (Math.random() - 0.5) * (window as any).gameCamShake * 2
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).gameCamShake -= dt
+  const gameCtx = (window as any).__GAME__ as { gameCamShake: number }
+  if (gameCtx.gameCamShake > 0) {
+    camera.position.x += (Math.random() - 0.5) * gameCtx.gameCamShake * 2
+    camera.position.y = targetY + (Math.random() - 0.5) * gameCtx.gameCamShake * 2
+    gameCtx.gameCamShake -= dt
   } else {
     camera.position.y = THREE.MathUtils.lerp(
       camera.position.y,

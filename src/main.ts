@@ -17,23 +17,66 @@ import { ProjectileSystem } from "./game/projectiles.ts"
 import { CHARACTER_NAMES, CFG } from "./config/game-config.ts"
 import type { AppState } from "./types/game.ts"
 
-// 确保 eval-api 向后兼容
+let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGPURenderer
+let vfx: VFXEngine
+let p1: Character, p2: Character
+const aiLogic = new AIController()
+let lastT = performance.now()
+let appState: AppState = "MENU"
+let inputManager: InputManager
+let uiManager: UIManager
+const projectiles = new ProjectileSystem()
+
+// ===== Unified Game Context for eval-api =====
+const gameContext = {
+  get scene() { return scene },
+  get camera() { return camera },
+  get renderer() { return renderer },
+  get vfx() { return vfx },
+  get p1() { return p1 },
+  get p2() { return p2 },
+  get projectiles() { return projectiles },
+  get inputManager() { return inputManager },
+  get uiManager() { return uiManager },
+  get aiLogic() { return aiLogic },
+  get audio() { return audio },
+  get CFG() { return CFG },
+  get appState() { return appState },
+  get sysProjectiles() { return projectiles.items },
+  gameHitStop: 0,
+  gameCamShake: 0,
+}
+
 if (typeof window !== "undefined") {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(window as any).modTick = modTick
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(window as any).logs = logs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(window as any).__GAME__ = gameContext
 }
 
-// ===== HMR Eval Bridge =====
+// ===== HMR Eval Bridge (auto-injects __GAME__ keys) =====
 const hot = import.meta.hot
 if (hot) {
+  function evalWithGameContext(code: string): unknown {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).__GAME__ as Record<string, unknown>
+    const keys = Object.keys(g)
+    const fn = new Function(
+      ...keys,
+      "__code__",
+      "return eval(__code__)"
+    )
+    return fn(...keys.map((k) => g[k]), code)
+  }
+
   hot.on("api-eval-request", async (data) => {
     let res
     try {
-      let raw = eval(data.code)
-      if (raw && typeof raw === "object" && typeof raw.then === "function") {
-        raw = await raw
+      let raw = evalWithGameContext(data.code)
+      if (raw && typeof raw === "object" && typeof (raw as { then?: unknown }).then === "function") {
+        raw = await (raw as Promise<unknown>)
       }
       res = makeSuccessResult(normalizeResult(raw))
     } catch (e) {
@@ -47,29 +90,11 @@ if (hot) {
 }
 
 // ===== Inject IndexedDB into eruda Resources =====
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, no-undef
 // eslint-disable-next-line no-undef
 if (typeof eruda !== "undefined" && eruda.get) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-undef
   mountIndexedDB(eruda as any)
 }
-
-let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGPURenderer
-let vfx: VFXEngine
-let p1: Character, p2: Character
-const aiLogic = new AIController()
-let lastT = performance.now()
-let appState: AppState = "MENU"
-let inputManager: InputManager
-let uiManager: UIManager
-const projectiles = new ProjectileSystem()
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(window as any).sysProjectiles = projectiles.items
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(window as any).gameHitStop = 0
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(window as any).gameCamShake = 0
 
 async function init() {
   const canvasBox = document.getElementById("canvas-container")
@@ -118,8 +143,6 @@ function startGameFlow() {
   if (p1) scene.remove(p1.root)
   if (p2) scene.remove(p2.root)
   projectiles.clear(scene)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(window as any).sysProjectiles = projectiles.items
 
   p1 = new Character(true, selType)
   scene.add(p1.root)
@@ -150,10 +173,8 @@ function mainLoop(time: number) {
   lastT = time
   if (dt > 0.1) dt = 0.1
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).gameHitStop > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).gameHitStop -= dt
+  if (gameContext.gameHitStop > 0) {
+    gameContext.gameHitStop -= dt
   } else {
     if (appState === "PLAY") {
       processPlayerLogic(p1, inputManager.state, vfx)
