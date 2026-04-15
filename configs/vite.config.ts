@@ -19,6 +19,8 @@ export default {
 		rollupOptions: {
 			input: {
 				index: resolve(rootDir, "index.html"),
+				fighter: resolve(rootDir, "pages/fighter.html"),
+				tank: resolve(rootDir, "pages/tank.html"),
 			}
 		}
 	},

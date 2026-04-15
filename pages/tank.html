@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<title>3D 坦克大战 · 开发中</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+			background: #050508;
+			color: #e8eaed;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 100vh;
+			padding: 24px;
+		}
+		.back {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			color: #00ffff;
+			text-decoration: none;
+			font-size: 14px;
+			padding: 8px 16px;
+			border: 1px solid rgba(0, 255, 255, 0.3);
+			border-radius: 8px;
+			background: rgba(0, 255, 255, 0.05);
+			transition: 0.2s;
+		}
+		.back:hover {
+			background: rgba(0, 255, 255, 0.15);
+		}
+		h1 {
+			font-size: 36px;
+			margin-bottom: 12px;
+			text-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+		}
+		.subtitle {
+			color: #9aa0a6;
+			font-size: 16px;
+			margin-bottom: 32px;
+		}
+		.info {
+			background: #0a0a10;
+			border: 1px solid #2c2f36;
+			border-radius: 12px;
+			padding: 24px 32px;
+			max-width: 480px;
+			width: 100%;
+			line-height: 1.8;
+			font-size: 14px;
+			color: #bdc1c6;
+		}
+		.info li {
+			margin-left: 18px;
+			margin-bottom: 6px;
+		}
+	</style>
+</head>
+<body>
+	<a href="../index.html" class="back">← 返回首页</a>
+	<h1>🎮 3D 坦克大战</h1>
+	<p class="subtitle">局域网联机 · 多人对战 · 经典重制</p>
+
+	<div class="info">
+		<p style="margin-bottom: 12px; color: #ffaa00;">当前状态：开发中，敬请期待</p>
+		<ul>
+			<li>WebGPU / WebGL 3D 渲染</li>
+			<li>局域网 P2P 联机对战</li>
+			<li>物理碰撞与破坏系统</li>
+			<li>多视角支持与观战模式</li>
+		</ul>
+	</div>
+
+	<script type="module" src="../src/tank/main.ts"></script>
+</body>
+</html>
