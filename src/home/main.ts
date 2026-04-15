@@ -11,7 +11,7 @@ const modules = import.meta.glob<PageCard>("/src/apps/*/page.json", {
 })
 
 const pages = Object.entries(modules).map(([path, data]) => {
-  const id = path.match(/^\/src\/(.+)\/page\.json$/)?.[1]
+  const id = path.match(/^\/src\/apps\/([^/]+)\/page\.json$/)?.[1]
   return { id, ...(data as PageCard) }
 })
 
