@@ -36,8 +36,14 @@ export class VFXEngine {
     this.boxGeom = new THREE.BoxGeometry(0.3, 0.3, 0.3)
   }
 
+  private sparkMats = new Map<number, THREE.MeshBasicMaterial>()
+
   spawnSparks(pos: THREE.Vector3, color: number, count = 15) {
-    const mat = new THREE.MeshBasicMaterial({ color })
+    let mat = this.sparkMats.get(color)
+    if (!mat) {
+      mat = new THREE.MeshBasicMaterial({ color })
+      this.sparkMats.set(color, mat)
+    }
     for (let i = 0; i < count; i++) {
       const m = new THREE.Mesh(this.boxGeom, mat)
       m.position.copy(pos)
@@ -117,7 +123,6 @@ export class VFXEngine {
       p.life -= dt * 3
       if (p.life <= 0) {
         this.scene.remove(p.m)
-        if (i === 0 || p.mat !== this.particles[i - 1]?.mat) p.mat.dispose()
         this.particles.splice(i, 1)
       } else {
         p.vy += CFG.g * dt

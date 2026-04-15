@@ -3,6 +3,7 @@ import { CFG, ST } from "../config/game-config.ts"
 import { audio } from "../audio/audio-engine.ts"
 import type { VFXEngine } from "../render/vfx-engine.ts"
 import type { UIManager } from "../ui/ui-manager.ts"
+import * as animModule from "./anim-data.ts"
 
 export class Character {
   isP: boolean
@@ -379,142 +380,12 @@ export class Character {
   }
 
   private _animate(_dt: number): void {
-    const t = this.stTimer
-    const pi = Math.PI
-    switch (this.state) {
-      case ST.IDLE:
-        this.body.position.y = 1.5 + Math.sin(t * 5) * 0.06
-        this.armL.rotation.x = Math.sin(t * 2) * 0.1
-        this.armR.rotation.x = this.type === 2 ? 0.5 : Math.sin(t * 2 + pi) * 0.1
-        break
-      case ST.WALK:
-        this.body.position.y = 1.5 + Math.abs(Math.sin(t * 18)) * 0.15
-        this.armL.rotation.x = Math.sin(t * 15) * 1.2
-        this.armR.rotation.x = this.type === 2 ? 0.5 : -Math.sin(t * 15) * 1.2
-        this.legL.rotation.x = -Math.sin(t * 15) * 1.2
-        this.legR.rotation.x = Math.sin(t * 15) * 1.2
-        break
-      case ST.JUMP:
-      case ST.FALL:
-        this.legL.rotation.x = 0.5
-        this.legR.rotation.x = -0.2
-        this.armL.rotation.x = 0.8
-        this.armR.rotation.x = -0.8
-        break
-      case ST.ATK1:
-      case ST.ATK2:
-        {
-          const isLeft = this.state === ST.ATK1
-          const arm = isLeft ? this.armL : this.armR
-          if (this.type === 2) {
-            if (t < 0.1) {
-              this.armR.rotation.x = -t * 30
-              this.body.rotation.x = 0.3
-            } else {
-              this.armR.rotation.x = THREE.MathUtils.lerp(
-                this.armR.rotation.x,
-                0,
-                0.3
-              )
-              this.body.rotation.x = 0
-            }
-          } else {
-            if (t < 0.1) {
-              arm.rotation.x = -t * 25
-              this.body.rotation.y = isLeft ? 0.6 : -0.6
-            } else {
-              arm.rotation.x = THREE.MathUtils.lerp(arm.rotation.x, 0, 0.4)
-              this.body.rotation.y = 0
-            }
-          }
-        }
-        break
-      case ST.ATK3:
-        if (this.type === 2) {
-          if (t < 0.2) {
-            this.armR.rotation.x = 2.5
-            this.body.rotation.x = -0.4
-          } else if (t < 0.3) {
-            this.armR.rotation.x = -2.8
-            this.body.rotation.x = 0.6
-          } else {
-            this.armR.rotation.x = THREE.MathUtils.lerp(
-              this.armR.rotation.x,
-              0,
-              0.2
-            )
-            this.body.rotation.x = 0
-          }
-        } else {
-          if (t < 0.2) {
-            this.armR.rotation.x = 1.0
-            this.body.position.y = 1.0
-          } else if (t < 0.3) {
-            this.armR.rotation.x = -3.5
-            this.body.position.y = 2.2
-          } else {
-            this.armR.rotation.x = THREE.MathUtils.lerp(
-              this.armR.rotation.x,
-              0,
-              0.2
-            )
-            this.body.position.y = 1.5
-          }
-        }
-        break
-      case ST.JUMP_ATK:
-        this.legL.rotation.x = -0.5
-        this.legR.rotation.x = 0.5
-        this.armR.rotation.x = -3.0
-        this.body.rotation.x = 0.5
-        break
-      case ST.DASH_ATK:
-        this.body.rotation.x = 0.8
-        this.armR.rotation.x = -1.8
-        this.armL.rotation.x = 1.0
-        this.legL.rotation.x = -0.8
-        this.legR.rotation.x = 0.5
-        break
-      case ST.BLOCK:
-        this.armL.rotation.x = -1.8
-        this.armR.rotation.x = -1.8
-        this.armL.rotation.z = 0.6
-        this.armR.rotation.z = -0.6
-        this.body.rotation.x = 0.3
-        break
-      case ST.DASH:
-        this.body.rotation.x = 0.7
-        this.armL.rotation.x = 1.2
-        this.armR.rotation.x = 1.2
-        this.head.rotation.x = -0.6
-        break
-      case ST.SKILL:
-        if (t < 0.2) {
-          this.armL.rotation.x = 2.5
-          this.armR.rotation.x = 2.5
-        } else {
-          this.armL.rotation.x = -1.5
-          this.armR.rotation.x = -1.5
-        }
-        break
-      case ST.HURT:
-        this.body.rotation.x = -0.8
-        this.head.rotation.x = 0.5
-        this.armL.rotation.x = -0.5
-        this.armR.rotation.x = -0.5
-        break
-      case ST.DEAD:
-        this.body.rotation.x = -pi / 2
-        this.body.position.y = 0.6
-        this.legL.rotation.x = 0
-        this.legR.rotation.x = 0
-        break
-      case ST.WIN:
-        this.body.rotation.x = 0
-        this.armL.rotation.z = 3.0
-        this.armR.rotation.z = -3.0
-        this.head.rotation.x = Math.sin(t * 12) * 0.15
-        break
+    const track = animModule.getAnimTrack(this.state, this.type)
+    let t = this.stTimer
+    if (track.loop && track.keyframes.length) {
+      const last = track.keyframes[track.keyframes.length - 1].t
+      if (last > 0) t = t % last
     }
+    animModule.applyAnim(this, t, track)
   }
 }
