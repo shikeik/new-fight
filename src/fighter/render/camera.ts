@@ -1,6 +1,6 @@
 import * as THREE from "three"
-import { CFG } from "../config/game-config.ts"
-import type { Character } from "../game/character.ts"
+import { CFG } from "@/fighter/config/game-config.ts"
+import type { Character } from "@/fighter/game/character.ts"
 
 export function updateCamera(
   camera: THREE.PerspectiveCamera,
@@ -58,3 +58,4 @@ export function updateMenuCamera(
   camera.position.x = Math.sin(time * 0.0005) * 8
   camera.lookAt(0, 3, 0)
 }
+

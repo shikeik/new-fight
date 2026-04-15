@@ -1,9 +1,9 @@
 import * as THREE from "three"
-import { CFG, ST } from "../config/game-config.ts"
-import { audio } from "../audio/audio-engine.ts"
-import type { VFXEngine } from "../render/vfx-engine.ts"
-import type { UIManager } from "../ui/ui-manager.ts"
-import * as animModule from "./anim-data.ts"
+import { CFG, ST } from "@/fighter/config/game-config.ts"
+import { audio } from "@/fighter/audio/audio-engine.ts"
+import type { VFXEngine } from "@/fighter/render/vfx-engine.ts"
+import type { UIManager } from "@/fighter/ui/ui-manager.ts"
+import * as animModule from "@/fighter/game/anim-data.ts"
 
 export class Character {
   isP: boolean
@@ -440,3 +440,4 @@ export class Character {
     animModule.applyAnim(this, t, track)
   }
 }
+

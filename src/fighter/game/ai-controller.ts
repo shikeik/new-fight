@@ -1,6 +1,6 @@
-import { ST, CFG } from "../config/game-config.ts"
-import { audio } from "../audio/audio-engine.ts"
-import type { Character } from "./character.ts"
+import { ST, CFG } from "@/fighter/config/game-config.ts"
+import { audio } from "@/fighter/audio/audio-engine.ts"
+import type { Character } from "@/fighter/game/character.ts"
 
 export class AIController {
   thinkTimer = 0
@@ -72,3 +72,4 @@ export class AIController {
     }
   }
 }
+

@@ -23,3 +23,4 @@ export interface GameConfig {
 }
 
 export type AppState = "MENU" | "PLAY" | "OVER"
+

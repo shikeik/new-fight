@@ -269,3 +269,4 @@ function updateEnvironment(scene: THREE.Scene, time: number) {
 }
 
 init()
+

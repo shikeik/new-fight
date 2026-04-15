@@ -1,4 +1,4 @@
-import type { Character } from "../game/character.ts"
+import type { Character } from "@/fighter/game/character.ts"
 
 export class UIManager {
   private selectedType = 0

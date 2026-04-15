@@ -1,5 +1,5 @@
-import { ST } from "../config/game-config.ts"
-import type { Character } from "./character.ts"
+import { ST } from "@/fighter/config/game-config.ts"
+import type { Character } from "@/fighter/game/character.ts"
 
 export type PartKey =
   | "body"
@@ -91,7 +91,7 @@ export function applyAnim(
   }
 }
 
-// ================= 通用动画表 =================
+// ================= 通用动画�?=================
 
 const IDLE: AnimTrack = {
   loop: true,
@@ -173,7 +173,7 @@ const DASH_ATK: AnimTrack = {
   ],
 }
 
-// ================= 类型差异化动画 =================
+// ================= 类型差异化动�?=================
 
 function atk1(type: number): AnimTrack {
   if (type === 2) {
@@ -296,3 +296,4 @@ export function getAnimTrack(state: number, type: number): AnimTrack {
       return IDLE
   }
 }
+

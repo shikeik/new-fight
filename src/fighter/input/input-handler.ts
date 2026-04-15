@@ -1,4 +1,4 @@
-import type { InputState } from "../types/game.ts"
+import type { InputState } from "@/fighter/types/game.ts"
 
 export class InputManager {
   state: InputState = { x: 0, a: false, b: false, c: false, s: false, d: false }
@@ -109,3 +109,4 @@ export class InputManager {
     )
   }
 }
+

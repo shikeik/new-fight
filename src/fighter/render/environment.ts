@@ -1,5 +1,5 @@
 import * as THREE from "three"
-import { CFG } from "../config/game-config.ts"
+import { CFG } from "@/fighter/config/game-config.ts"
 
 export function buildEnvironment(scene: THREE.Scene) {
   scene.background = new THREE.Color(0x110515)
@@ -66,7 +66,7 @@ export function buildEnvironment(scene: THREE.Scene) {
   }
   scene.add(props)
 
-  // ===== 霓虹灯牌（带闪烁） =====
+  // ===== 霓虹灯牌（带闪烁�?=====
   const signCanvas = document.createElement("canvas")
   signCanvas.width = 512
   signCanvas.height = 256
@@ -121,3 +121,4 @@ export function buildEnvironment(scene: THREE.Scene) {
     scene.add(rain)
   }
 }
+

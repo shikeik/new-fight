@@ -1,4 +1,4 @@
-import type { GameConfig } from "../types/game.ts"
+import type { GameConfig } from "@/fighter/types/game.ts"
 
 export const CFG: GameConfig = {
   g: -60,

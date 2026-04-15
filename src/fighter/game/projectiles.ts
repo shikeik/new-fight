@@ -1,6 +1,6 @@
 import * as THREE from "three"
-import type { Character } from "./character.ts"
-import type { VFXEngine } from "../render/vfx-engine.ts"
+import type { Character } from "@/fighter/game/character.ts"
+import type { VFXEngine } from "@/fighter/render/vfx-engine.ts"
 
 export interface Projectile {
   m: THREE.Mesh
@@ -52,3 +52,4 @@ export class ProjectileSystem {
     this.items.length = 0
   }
 }
+
