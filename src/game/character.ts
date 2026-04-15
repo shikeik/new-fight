@@ -20,6 +20,8 @@ export class Character {
   hitConnected = false
   isInvincible = false
   airDashes = 0
+  justDodgeTimer = 0
+  justBlockTimer = 0
   stats: {
     spd: number
     jmp: number
@@ -162,6 +164,8 @@ export class Character {
     this.stTimer = 0
     this.hitConnected = false
     this.isInvincible = false
+    this.justDodgeTimer = 0
+    this.justBlockTimer = 0
 
     this.body.rotation.set(0, 0, 0)
     this.head.rotation.set(0, 0, 0)
@@ -176,6 +180,7 @@ export class Character {
 
     if (st === ST.DASH) {
       this.isInvincible = true
+      this.justDodgeTimer = CFG.justWindow
       this.vel.x = this.face * CFG.dodgeSpeed
       this.mats.forEach((m) => {
         const mat = m as THREE.Material & { opacity: number; transparent: boolean }
@@ -183,7 +188,11 @@ export class Character {
         mat.transparent = true
       })
     }
-    if (st === ST.BLOCK || st === ST.SKILL) {
+    if (st === ST.BLOCK) {
+      this.justBlockTimer = CFG.justWindow
+      this.vel.x = 0
+    }
+    if (st === ST.SKILL) {
       this.vel.x = 0
     }
   }
@@ -192,10 +201,38 @@ export class Character {
     dmg: number,
     dirX: number,
     isHeavy: boolean,
-    vfx: VFXEngine
+    vfx: VFXEngine,
+    onJust?: (kind: "dodge" | "block") => void
   ): boolean {
     if (this.isInvincible || this.state === ST.DEAD) return false
+
+    // Just Dodge
+    if (this.justDodgeTimer > 0) {
+      vfx.spawnText(
+        new THREE.Vector3(this.pos.x, this.pos.y + 2.5, 0),
+        "JUST DODGE",
+        "#00ffff",
+        true
+      )
+      vfx.spawnBurst(this.pos, 0x00ffff)
+      if (onJust) onJust("dodge")
+      return false
+    }
+
+    // Just Block
     if (this.state === ST.BLOCK && dirX !== this.face) {
+      if (this.justBlockTimer > 0) {
+        vfx.spawnText(
+          new THREE.Vector3(this.pos.x, this.pos.y + 2.5, 0),
+          "JUST BLOCK",
+          "#ffaa00",
+          true
+        )
+        vfx.spawnBurst(this.pos, 0xffaa00)
+        if (onJust) onJust("block")
+        this.vel.x = dirX * 2
+        return false
+      }
       this.hp -= dmg * 0.1
       vfx.spawnSparks(
         new THREE.Vector3(this.pos.x + this.face, this.pos.y + 1.5, 0),
@@ -206,6 +243,7 @@ export class Character {
       this.vel.x = dirX * 5
       return true
     }
+
     this.hp -= dmg
     audio[isHeavy ? "sfxHitHeavy" : "sfxHitLight"]()
     vfx.spawnSparks(
@@ -257,6 +295,8 @@ export class Character {
     }
 
     this.stTimer += dt
+    if (this.justDodgeTimer > 0) this.justDodgeTimer -= dt
+    if (this.justBlockTimer > 0) this.justBlockTimer -= dt
     if (this.comboTimer > 0) this.comboTimer -= dt
     else this.combo = 0
     const onGnd = this.pos.y <= CFG.floorY + 0.05
@@ -301,7 +341,18 @@ export class Character {
                 (isHeavy ? 18 : 10) * this.stats.dmgMuls,
                 this.face,
                 isHeavy,
-                vfx
+                vfx,
+                (kind) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const g = (window as any).__GAME__ as { gameHitStop: number; gameCamShake: number; slowMoTimer: number }
+                  g.gameHitStop = 0.05
+                  g.gameCamShake = 0.5
+                  g.slowMoTimer = CFG.slowMoDuration
+                  if (kind === "block" && this.isP) {
+                    this.changeState(ST.DASH_ATK)
+                    this.face = opp.pos.x > this.pos.x ? 1 : -1
+                  }
+                }
               )
             ) {
               this.hitConnected = true
