@@ -11,6 +11,11 @@ export default {
 		host: "0.0.0.0",
 		port: 5000,
 		https: useHttps,
+		hmr: {
+			host: "192.168.31.15",
+			port: 5000,
+			protocol: "ws",
+		},
 	},
 	build: {
 		target: "es2022",
