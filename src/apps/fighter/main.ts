@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { CDN } from "@/versions.ts"
 import { normalizeResult, makeSuccessResult, makeErrorResult } from "@scripts/eval-engine.ts"
 import { modTick } from "@/core/runtime/mod-tick.ts"
 import { logs } from "@/core/runtime/log-capture.ts"
@@ -14,6 +15,24 @@ import { processPlayerLogic } from "./game/player-logic.ts"
 import { ProjectileSystem } from "./game/projectiles.ts"
 import { CHARACTER_NAMES, CFG } from "./config/game-config.ts"
 import type { AppState } from "./types/game.ts"
+
+async function injectScript(src: string) {
+  return new Promise<void>((resolve, reject) => {
+    const s = document.createElement("script")
+    s.src = src
+    s.onload = () => resolve()
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
+await injectScript(`https://cdn.jsdelivr.net/npm/eruda@${CDN.eruda}`)
+await injectScript(`https://cdn.jsdelivr.net/npm/@shikeik/eruda-indexeddb@${CDN.erudaIndexedDB}`)
+
+// @ts-expect-error global from CDN
+eruda.init()
+// @ts-expect-error global from CDN
+erudaIndexedDB(eruda)
 
 let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer
 let vfx: VFXEngine
