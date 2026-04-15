@@ -1,7 +1,7 @@
 import { resolve } from "path"
 import { globSync } from "fs"
 import basicSsl from "@vitejs/plugin-basic-ssl"
-import { apiEvalPlugin } from "./api-eval-plugin.ts"
+import { apiEvalPlugin } from "../scripts/api-eval-plugin.ts"
 
 // 项目根目录（vite.config.ts 现在在 configs/ 目录下）
 const rootDir = resolve(__dirname, "..")
