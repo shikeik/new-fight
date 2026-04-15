@@ -3,14 +3,11 @@ export function haptic(ms: number) {
 }
 
 export class AudioEngine {
-  // eslint-disable-next-line no-undef
   private ctx: AudioContext | null = null
-  // eslint-disable-next-line no-undef
   private master: GainNode | null = null
 
   init() {
     if (this.ctx && this.ctx.state === "running") return
-    // eslint-disable-next-line no-undef
     this.ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.5
