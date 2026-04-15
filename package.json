@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite --config configs/vite.config.ts",
+    "dev:https": "cross-env HTTPS=true vite --config configs/vite.config.ts",
     "prebuild": "npm run type-check && npm run lint",
     "build": "vite build --config configs/vite.config.ts",
     "build:single": "node scripts/build-single-file.mjs",
@@ -30,6 +31,7 @@
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "cross-env": "^10.1.0",
     "eslint": "^10.1.0",
     "jiti": "^2.6.1",
     "typescript": "^6.0.2",
