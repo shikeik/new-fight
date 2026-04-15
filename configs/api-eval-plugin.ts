@@ -65,7 +65,7 @@ function sendResult(res: ServerResponse, id: number, result: EvalResult, isPrett
 		res.setHeader("Content-Type", "text/plain; charset=utf-8")
 		const prettyResult = result.error
 			? `❌ errorType: ${result.errorType}\n\n${result.error}`
-			: `✅ success: true\nresult: ${typeof result.result === "object" ? JSON.stringify(result.result, null, 2) : result.result}`
+			: `✅ success: true\nresult: ${typeof result.result === "object" ? JSON.stringify(result.result, null, 2).replace(/\\n/g, "\n") : result.result}`
 		res.end(`[Request #${id}]\n${prettyResult}\n`)
 	} else {
 		res.setHeader("Content-Type", "application/json; charset=utf-8")

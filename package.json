@@ -29,6 +29,7 @@
     "@types/three": "^0.183.1",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "eslint": "^10.1.0",
     "jiti": "^2.6.1",
     "typescript": "^6.0.2",
