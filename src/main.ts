@@ -168,11 +168,32 @@ function updateHUD() {
   }
 }
 
+let frameCount = 0
+let fpsLastTime = performance.now()
+let fpsEl: HTMLElement | null = null
+
+function ensureFpsElement() {
+  if (fpsEl) return fpsEl
+  fpsEl = document.createElement("div")
+  fpsEl.style.cssText =
+    "position:fixed;top:8px;left:8px;z-index:9999;font-family:monospace;font-size:14px;color:#0f0;background:rgba(0,0,0,0.6);padding:4px 8px;border-radius:4px;pointer-events:none;"
+  document.body.appendChild(fpsEl)
+  return fpsEl
+}
+
 function mainLoop(time: number) {
   requestAnimationFrame(mainLoop)
   let dt = (time - lastT) / 1000
   lastT = time
   if (dt > 0.1) dt = 0.1
+
+  frameCount++
+  const now = performance.now()
+  if (now - fpsLastTime >= 1000) {
+    ensureFpsElement().textContent = `FPS: ${frameCount}`
+    frameCount = 0
+    fpsLastTime = now
+  }
 
   if (gameContext.slowMoTimer > 0) {
     gameContext.slowMoTimer -= dt
