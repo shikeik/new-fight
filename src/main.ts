@@ -45,6 +45,7 @@ const gameContext = {
   get sysProjectiles() { return projectiles.items },
   gameHitStop: 0,
   gameCamShake: 0,
+  slowMoTimer: 0,
 }
 
 if (typeof window !== "undefined") {
@@ -173,6 +174,11 @@ function mainLoop(time: number) {
   lastT = time
   if (dt > 0.1) dt = 0.1
 
+  if (gameContext.slowMoTimer > 0) {
+    gameContext.slowMoTimer -= dt
+    dt *= CFG.slowMoFactor
+  }
+
   if (gameContext.gameHitStop > 0) {
     gameContext.gameHitStop -= dt
   } else {
@@ -194,6 +200,9 @@ function mainLoop(time: number) {
   }
   vfx.update(dt)
 
+  // 环境氛围动画
+  updateEnvironment(scene, time)
+
   const tickTasks = modTick.getTasks()
   for (let i = tickTasks.length - 1; i >= 0; i--) {
     try {
@@ -210,6 +219,30 @@ function mainLoop(time: number) {
     updateMenuCamera(camera, time)
   }
   renderer.render(scene, camera)
+}
+
+function updateEnvironment(scene: THREE.Scene, time: number) {
+  const sign = scene.getObjectByName("neonSign") as THREE.Mesh & {
+    material: THREE.MeshBasicMaterial
+  }
+  if (sign) {
+    const flicker = 0.85 + Math.sin(time * 0.008) * 0.1 + Math.random() * 0.05
+    sign.material.opacity = flicker
+  }
+
+  const rain = scene.getObjectByName("rain") as THREE.Points
+  if (rain) {
+    const positions = rain.geometry.attributes.position.array as Float32Array
+    for (let i = 0; i < positions.length / 3; i++) {
+      positions[i * 3 + 1] -= 0.8
+      if (positions[i * 3 + 1] < 0) {
+        positions[i * 3 + 1] = 60
+        positions[i * 3] = (Math.random() - 0.5) * 120
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 60
+      }
+    }
+    rain.geometry.attributes.position.needsUpdate = true
+  }
 }
 
 init()

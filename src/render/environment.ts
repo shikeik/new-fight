@@ -65,6 +65,7 @@ export function buildEnvironment(scene: THREE.Scene) {
   }
   scene.add(props)
 
+  // ===== 霓虹灯牌（带闪烁） =====
   const signCanvas = document.createElement("canvas")
   signCanvas.width = 512
   signCanvas.height = 256
@@ -87,11 +88,33 @@ export function buildEnvironment(scene: THREE.Scene) {
     ctx.fillText("UNDERGROUND", 256, 200)
   }
 
+  const signTex = new THREE.CanvasTexture(signCanvas)
   const signMat = new THREE.MeshBasicMaterial({
-    map: new THREE.CanvasTexture(signCanvas),
+    map: signTex,
     transparent: true,
   })
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), signMat)
   sign.position.set(0, 15, -14)
+  sign.name = "neonSign"
   scene.add(sign)
+
+  // ===== 雨滴粒子 =====
+  const rainGeo = new THREE.BufferGeometry()
+  const rainCount = 4000
+  const rainPos = new Float32Array(rainCount * 3)
+  for (let i = 0; i < rainCount; i++) {
+    rainPos[i * 3] = (Math.random() - 0.5) * 120
+    rainPos[i * 3 + 1] = Math.random() * 60
+    rainPos[i * 3 + 2] = (Math.random() - 0.5) * 60
+  }
+  rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3))
+  const rainMat = new THREE.PointsMaterial({
+    color: 0x8899aa,
+    size: 0.15,
+    transparent: true,
+    opacity: 0.4,
+  })
+  const rain = new THREE.Points(rainGeo, rainMat)
+  rain.name = "rain"
+  scene.add(rain)
 }
