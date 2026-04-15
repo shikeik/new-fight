@@ -34,7 +34,7 @@ export default {
 		include: ["src/**/*.ts", "src/**/*.js"]
 	},
 	optimizeDeps: {
-		include: ["three/webgpu", "luna-data-grid", "licia", "idb"],
+		include: ["three", "luna-data-grid", "licia", "idb"],
 		rolldownOptions: {
 			resolve: {
 				extensions: [".ts", ".js"]

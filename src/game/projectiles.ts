@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import type { Character } from "./character.ts"
 import type { VFXEngine } from "../render/vfx-engine.ts"
 

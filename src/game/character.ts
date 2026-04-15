@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import { CFG, ST } from "../config/game-config.ts"
 import { audio } from "../audio/audio-engine.ts"
 import type { VFXEngine } from "../render/vfx-engine.ts"

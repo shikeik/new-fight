@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import { CFG } from "../config/game-config.ts"
 import type { Character } from "../game/character.ts"
 
