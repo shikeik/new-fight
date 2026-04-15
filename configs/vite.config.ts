@@ -36,6 +36,7 @@ export default {
 	resolve: {
 		alias: {
 			"@": resolve(rootDir, "src"),
+			"@scripts": resolve(rootDir, "scripts"),
 		},
 		extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
 	},

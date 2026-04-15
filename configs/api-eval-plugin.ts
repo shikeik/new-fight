@@ -5,7 +5,7 @@
 import type { ViteDevServer } from "vite"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import vm from "node:vm"
-import { normalizeResult, makeSuccessResult, makeErrorResult, type EvalResult } from "../src/core/lib/eval-engine.ts"
+import { normalizeResult, makeSuccessResult, makeErrorResult, type EvalResult } from "../scripts/eval-engine.ts"
 
 const pendingRequests = new Map<number, { resolve: (v: unknown) => void }>()
 let requestId = 0

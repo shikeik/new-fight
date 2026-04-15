@@ -20,6 +20,7 @@
 		"baseUrl": "..",
 		"paths": {
 			"@/*": ["src/*"],
+			"@scripts/*": ["scripts/*"],
 			"@engine/*": ["src/engine/*"],
 			"@fox-jump/*": ["src/fox-jump/*"],
 			"@game/*": ["src/fox-jump/game/*"],
@@ -30,7 +31,7 @@
 			"@managers/*": ["src/fox-jump/managers/*"]
 		}
 	},
-	"include": ["../src/**/*.ts", "../src/**/*.d.ts"],
+	"include": ["../src/**/*.ts", "../src/**/*.d.ts", "../scripts/**/*.ts"],
 	"exclude": ["../src/**/*.test.ts", "../src/causal-ai/cli/**/*"],
 	"references": [{ "path": "./tsconfig.node.json" }]
 }
