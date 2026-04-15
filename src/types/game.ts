@@ -16,6 +16,9 @@ export interface GameConfig {
   cameraLerpX: number
   cameraLerpZ: number
   cameraLerpY: number
+  justWindow: number
+  slowMoFactor: number
+  slowMoDuration: number
 }
 
 export type AppState = "MENU" | "PLAY" | "OVER"

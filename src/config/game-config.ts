@@ -9,6 +9,9 @@ export const CFG: GameConfig = {
   cameraLerpX: 0.1,
   cameraLerpZ: 0.05,
   cameraLerpY: 0.1,
+  justWindow: 0.12,
+  slowMoFactor: 0.2,
+  slowMoDuration: 0.3,
 }
 
 export const ST = {
