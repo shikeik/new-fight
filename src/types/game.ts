@@ -19,6 +19,7 @@ export interface GameConfig {
   justWindow: number
   slowMoFactor: number
   slowMoDuration: number
+  showRain: boolean
 }
 
 export type AppState = "MENU" | "PLAY" | "OVER"
