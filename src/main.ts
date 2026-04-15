@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import mountIndexedDB from "@shikeik/eruda-indexeddb"
 
 import { normalizeResult, makeSuccessResult, makeErrorResult } from "./lib/eval-engine.ts"
@@ -17,7 +17,7 @@ import { ProjectileSystem } from "./game/projectiles.ts"
 import { CHARACTER_NAMES, CFG } from "./config/game-config.ts"
 import type { AppState } from "./types/game.ts"
 
-let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGPURenderer
+let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer
 let vfx: VFXEngine
 let p1: Character, p2: Character
 const aiLogic = new AIController()
@@ -101,7 +101,7 @@ async function init() {
   const canvasBox = document.getElementById("canvas-container")
   if (!canvasBox) return
 
-  renderer = new THREE.WebGPURenderer({
+  renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: "high-performance",
   })
@@ -110,7 +110,7 @@ async function init() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.2
   canvasBox.appendChild(renderer.domElement)
-  await renderer.init()
+  // WebGLRenderer does not require init()
 
   scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(

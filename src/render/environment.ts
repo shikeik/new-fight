@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import { CFG } from "../config/game-config.ts"
 
 export function buildEnvironment(scene: THREE.Scene) {
