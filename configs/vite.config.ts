@@ -4,12 +4,13 @@ import { apiEvalPlugin } from "./api-eval-plugin.ts"
 
 // 项目根目录（vite.config.ts 现在在 configs/ 目录下）
 const rootDir = resolve(__dirname, "..")
+const useHttps = process.env.HTTPS === "true"
 
 export default {
 	server: {
 		host: "0.0.0.0",
 		port: 5000,
-		https: true,
+		https: useHttps,
 	},
 	build: {
 		target: "es2022",
@@ -21,7 +22,7 @@ export default {
 			}
 		}
 	},
-	plugins: [basicSsl(), apiEvalPlugin],
+	plugins: useHttps ? [basicSsl(), apiEvalPlugin] : [apiEvalPlugin],
 	resolve: {
 		alias: {
 			"@": resolve(rootDir, "src"),
