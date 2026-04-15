@@ -1,5 +1,5 @@
 import { resolve } from "path"
-import mkcert from "vite-plugin-mkcert"
+import basicSsl from "@vitejs/plugin-basic-ssl"
 import { apiEvalPlugin } from "./api-eval-plugin.ts"
 
 // 项目根目录（vite.config.ts 现在在 configs/ 目录下）
@@ -21,7 +21,7 @@ export default {
 			}
 		}
 	},
-	plugins: [mkcert(), apiEvalPlugin],
+	plugins: [basicSsl(), apiEvalPlugin],
 	resolve: {
 		alias: {
 			"@": resolve(rootDir, "src"),
