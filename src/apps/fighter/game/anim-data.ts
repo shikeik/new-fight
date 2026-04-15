@@ -1,5 +1,5 @@
-import { ST } from "@/fighter/config/game-config.ts"
-import type { Character } from "@/fighter/game/character.ts"
+import { ST } from "@/apps/fighter/config/game-config.ts"
+import type { Character } from "@/apps/fighter/game/character.ts"
 
 export type PartKey =
   | "body"

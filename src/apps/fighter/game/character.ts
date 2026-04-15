@@ -1,9 +1,9 @@
 import * as THREE from "three"
-import { CFG, ST } from "@/fighter/config/game-config.ts"
-import { audio } from "@/fighter/audio/audio-engine.ts"
-import type { VFXEngine } from "@/fighter/render/vfx-engine.ts"
-import type { UIManager } from "@/fighter/ui/ui-manager.ts"
-import * as animModule from "@/fighter/game/anim-data.ts"
+import { CFG, ST } from "@/apps/fighter/config/game-config.ts"
+import { audio } from "@/apps/fighter/audio/audio-engine.ts"
+import type { VFXEngine } from "@/apps/fighter/render/vfx-engine.ts"
+import type { UIManager } from "@/apps/fighter/ui/ui-manager.ts"
+import * as animModule from "@/apps/fighter/game/anim-data.ts"
 
 export class Character {
   isP: boolean

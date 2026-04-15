@@ -1,8 +1,8 @@
-import { ST, CFG } from "@/fighter/config/game-config.ts"
-import { audio } from "@/fighter/audio/audio-engine.ts"
-import type { InputState } from "@/fighter/types/game.ts"
-import type { Character } from "@/fighter/game/character.ts"
-import type { VFXEngine } from "@/fighter/render/vfx-engine.ts"
+import { ST, CFG } from "@/apps/fighter/config/game-config.ts"
+import { audio } from "@/apps/fighter/audio/audio-engine.ts"
+import type { InputState } from "@/apps/fighter/types/game.ts"
+import type { Character } from "@/apps/fighter/game/character.ts"
+import type { VFXEngine } from "@/apps/fighter/render/vfx-engine.ts"
 
 export interface PlayerActions {
   onDash?: () => void

@@ -5,7 +5,7 @@ interface PageCard {
   badge?: "playable" | "wip" | "tool"
 }
 
-const modules = import.meta.glob<PageCard>("/src/*/page.json", {
+const modules = import.meta.glob<PageCard>("/src/apps/*/page.json", {
   eager: true,
   import: "default",
 })

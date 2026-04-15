@@ -1,5 +1,5 @@
 import * as THREE from "three"
-import { CFG } from "@/fighter/config/game-config.ts"
+import { CFG } from "@/apps/fighter/config/game-config.ts"
 
 export class VFXEngine {
   scene: THREE.Scene

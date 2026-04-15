@@ -1,6 +1,6 @@
 import * as THREE from "three"
-import { CFG } from "@/fighter/config/game-config.ts"
-import type { Character } from "@/fighter/game/character.ts"
+import { CFG } from "@/apps/fighter/config/game-config.ts"
+import type { Character } from "@/apps/fighter/game/character.ts"
 
 export function updateCamera(
   camera: THREE.PerspectiveCamera,

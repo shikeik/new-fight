@@ -1,6 +1,6 @@
 import * as THREE from "three"
-import type { Character } from "@/fighter/game/character.ts"
-import type { VFXEngine } from "@/fighter/render/vfx-engine.ts"
+import type { Character } from "@/apps/fighter/game/character.ts"
+import type { VFXEngine } from "@/apps/fighter/render/vfx-engine.ts"
 
 export interface Projectile {
   m: THREE.Mesh
